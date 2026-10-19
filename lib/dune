@@ -1,0 +1,8 @@
+(library
+ (name landau)
+ (libraries zarith yojson unix))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))

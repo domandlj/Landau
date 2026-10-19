@@ -1,0 +1,76 @@
+theory Relativity
+  import SI
+  var m : kg, positive
+  var v, c : m/s, positive
+  var E : J
+  law energy: E = m*c^2/sqrt(1 - v^2/c^2)
+  derive classical:                 -- E = m c^2 + m v^2/2
+    approximate energy where v << c order 2
+  end
+end
+
+theory Pendulum
+  import SI
+  var t : s, positive
+  var θ(t) : 1
+  var g : m/s^2, positive
+  var L : m, positive
+  var θ0 : 1, positive
+  law exact: diff(diff(θ, t), t) = -(g/L)*sin(θ)
+  derive small:                     -- θ'' = -(g/L) θ
+    approximate exact where θ << 1
+  end
+  derive swing:                     -- θ = θ0 cos(sqrt(g/L) t)
+    s := approximate exact where θ << 1
+    solve s for θ with θ(0) = θ0, at(diff(θ, t), t, 0) = 0
+  end
+end
+
+theory Height
+  import Constants
+  var M : kg, positive
+  var R, z : m, positive
+  var gh : m/s^2
+  law gravity: gh = G*M/(R + z)^2
+  derive near_surface:              -- g (1 - 2h/R)
+    approximate gravity where z << R
+  end
+end
+
+theory Terminal
+  import SI
+  var t : s, positive
+  var v(t) : m/s
+  var m : kg, positive
+  var g : m/s^2, positive
+  var b : kg/s, positive
+  law falling: m*diff(v, t) = m*g - b*v
+  derive terminal:                  -- v(inf) = m g / b
+    s := solve falling for v with v(0) = 0 [m/s]
+    limit s as t -> inf
+  end
+end
+
+theory Bad
+  import SI
+  var v, c : m/s
+  var x : m
+  var E : J
+  var F : N, vector
+  law e1: E = 1/(1 - v/c)*1 [J]
+  derive b1:
+    approximate e1 where v << 1
+  end
+  derive b2:
+    approximate e1 where v << 2*v
+  end
+  derive b3:
+    approximate e1 where F << 1
+  end
+  derive b4:
+    limit e1 as v -> 3 [m]
+  end
+  derive b5:
+    approximate e1 where v << c order 30
+  end
+end

@@ -1,0 +1,95 @@
+-- Numbers with units: put values into a law, then `evaluate` it.
+--   2 [kg], 9.81 [m/s^2]       a quantity: a number and a unit in brackets
+--   evaluate eq                x = ... with everything else known
+--   evaluate eq in km/h        in the unit you ask for
+--   evaluate eq digits 3       to 3 significant figures (6 by default)
+-- When every variable has a value, `evaluate` checks the equation instead.
+--   compute kinetic(2 [kg], 3 [m/s])   the value of any expression; with a
+--   compute E1 = ...                   name, the result becomes a constant
+
+theory Kinematics
+  import Constants                 -- c, G, h, e, g, ... (and the SI units)
+  var x, x0 : m
+  var v, v0 : m/s
+  var t : s, positive
+  var H : m
+
+  law position: x = x0 + v0*t - g*t^2/2
+  law speed:    v = v0 - g*t
+
+  -- A ball is thrown straight up at 15 m/s. How high does it go?
+  derive top_time:                 -- 1.53 s
+    s := speed[v := 0 [m/s], v0 := 15 [m/s]]
+    t1 := solve s for t
+    evaluate t1 digits 3
+  end
+
+  derive top_height:               -- 11.5 m
+    t1 := solve speed[v := 0 [m/s]] for t
+    h := subst t1 into position
+    a := h[x0 := 0 [m], v0 := 15 [m/s]]
+    evaluate a digits 3
+  end
+end
+
+theory Driving
+  import SI
+  var d : km, positive
+  var T : min, positive
+  var v : km/h
+
+  law average: v = d/T
+
+  derive trip:                     -- 48 km/h
+    a := average[d := 12 [km], T := 15 [min]]
+    evaluate a
+  end
+
+  derive trip_si:                  -- 13.3 m/s
+    a := average[d := 12 [km], T := 15 [min]]
+    evaluate a in m/s digits 3
+  end
+end
+
+theory Orbit
+  import Constants
+  var M, m : kg, positive
+  var r : m, positive
+  var v : km/s, positive
+
+  -- gravity provides the centripetal force
+  law circular: G*M*m/r^2 = m*v^2/r
+
+  derive leo:                      -- low Earth orbit: 7.67 km/s
+    s := solve circular for v
+    a := s[M := 5.97e24 [kg], r := 6.78e6 [m]]
+    evaluate a digits 3
+  end
+end
+
+theory Answers
+  import SI
+  var F : N
+  var m : kg, positive
+  var a : m/s^2
+
+  law newton: F = m*a
+
+  -- Checking a student's answer: holds to 3 digits
+  derive check:
+    evaluate newton[F := 29.4 [N], m := 3 [kg], a := 9.8 [m/s^2]] digits 3
+  end
+end
+
+-- `compute` gives the value of an expression, such as a definition with
+-- numbers put in. Parameters with units make it check its arguments.
+theory Energies
+  import Constants
+  def kinetic(m : kg, v : m/s) = m*v^2/2
+  def potential(m : kg, h : m) = m*g*h
+
+  compute kinetic(1500 [kg], 100 [km/h]) in kJ digits 3     -- a car: 579 kJ
+  compute E_ball = kinetic(0.145 [kg], 40 [m/s])           -- a baseball: 116 J
+  compute h_ball = E_ball/(0.145 [kg]*g) digits 3           -- thrown up, it rises 81.6 m
+  compute potential(70 [kg], 8848 [m]) in MJ digits 3       -- on top of Everest: 6.07 MJ
+end

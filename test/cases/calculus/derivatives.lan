@@ -1,0 +1,58 @@
+theory Motion
+  dim L, T
+  var t : T
+  var x(t) : L
+  var v(t) : L/T
+  var a(t) : L/T^2
+  var x0 : L
+  var v0 : L/T
+  var g : L/T^2, positive
+
+  law position: x = x0 + v0*t - g*t^2/2
+  law velocity: v = diff(x, t)
+  law accel:    a = diff(v, t)
+
+  derive speed:
+    s := subst position into velocity
+    simplify s
+  end
+  derive acceleration:
+    s := subst speed into accel
+    simplify s
+  end
+  derive d2:
+    p := differentiate position by t
+    q := differentiate p by t
+    simplify q
+  end
+  derive top_time:
+    s := speed[v := 0]
+    solve s for t
+  end
+end
+
+theory Identities
+  dim L
+  var r : L, position
+  var f(r) : L
+  var F(r) : L, vector
+  law curl_grad: curl(grad(f)) = 0
+  law div_curl:  div(curl(F)) = 0
+  derive check1:
+    e := expand curl_grad
+    simplify e
+  end
+  derive check2:
+    e := expand div_curl
+    simplify e
+  end
+end
+
+theory Bad
+  dim L, T
+  var t : T
+  var x : L
+  var y(t) : L
+  var z(y) : L
+  law nodep: x = diff(x, t)*t
+end

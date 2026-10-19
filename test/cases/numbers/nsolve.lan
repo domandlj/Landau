@@ -1,0 +1,28 @@
+theory Kepler
+  import SI
+  var E, M, e : 1
+  law kepler: M = E - e*sin(E)
+  derive anomaly:                          -- E = 1.4987 for M = 1, e = 0.5
+    k := kepler[M := 1, e := 0.5]
+    solve k for E numerically near 1 digits 5
+  end
+end
+
+theory Fall
+  import Constants
+  var x : m
+  var t : s, positive
+  var v0 : m/s
+  law height: x = v0*t - g*t^2/2
+  derive landing:                          -- back at 0 after 2*v0/g = 4.08 s
+    h := height[x := 0 [m], v0 := 20 [m/s]]
+    solve h for t numerically near 3 [s] digits 3
+  end
+  derive bad1:
+    solve height for t numerically near 3 [s]
+  end
+  derive bad2:
+    h := height[x := 0 [m], v0 := 20 [m/s]]
+    solve h for t numerically near 3 [m]
+  end
+end

@@ -1,0 +1,35 @@
+theory M
+  dim M, L, T, I
+  var r : L, position
+  var t : T
+  var E(r, t) : M*L/(T^3*I), vector
+  var B(r, t) : M/(T^2*I), vector
+  var J(r, t) : I/L^2, vector
+  var ρ(r, t) : I*T/L^3
+  var ε0 : T^4*I^2/(M*L^3), positive
+  var μ0 : M*L/(T^2*I^2), positive
+
+  law gauss:    div(E) = ρ/ε0
+  law faraday:  curl(E) = -diff(B, t)
+  law ampere:   curl(B) = μ0*J + μ0*ε0*diff(E, t)
+  law curl_curl: curl(curl(E)) = grad(div(E)) - lap(E)
+
+  derive check_identity:
+    e := expand curl_curl
+    simplify e
+  end
+
+  derive continuity:
+    d := apply div to ampere
+    g := subst gauss into d
+    simplify g
+  end
+
+  derive wave:
+    c  := apply curl to faraday
+    a  := subst ampere[J := 0] into c
+    i  := subst curl_curl into a
+    g  := subst gauss[ρ := 0] into i
+    simplify g
+  end
+end

@@ -1,0 +1,43 @@
+theory Incline
+  import SI
+  var m : kg, positive
+  var g : m/s^2, positive
+  var α, μ : 1, positive
+  var N : N
+  var a : m/s^2
+  diagram sliding:
+    body m
+    force W = m*g toward down
+    force N toward angle(α + pi/2)
+    force f = μ*N toward angle(α)
+    accelerates a toward angle(α + pi)
+    plane angle(α)
+    draw α = 0.5
+    mark α between plane and right
+    mark α between N and up
+  end
+  diagram wrong:
+    body m
+    force W = m*g toward down
+    force N toward angle(α + pi/2)
+    plane angle(α)
+    draw α = 0.5
+    mark α between N and right
+  end
+end
+theory Knot
+  import SI
+  var m : kg, positive
+  var g : m/s^2, positive
+  var T1, T2 : N
+  var β : 1, positive
+  diagram hanging:
+    body m
+    force W = m*g toward down
+    force T1 toward angle(pi - β)
+    force T2 toward angle(β)
+    draw β = 0.6
+    mark β between T2 and right
+    mark β between T1 and left
+  end
+end

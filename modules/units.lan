@@ -1,0 +1,58 @@
+-- Units: `import SI` brings the SI units, and a variable can be declared in
+-- units instead of dimensions. Checking is still by dimension (km/h is a
+-- speed like m/s); the units are for reading. Switch the results between
+-- Dims and Units with the buttons at the top.
+
+theory Mechanics
+  import SI
+  var m : kg, positive
+  var v : m/s
+  var a : m/s^2
+  var F : N
+  var E : J
+  var r : m, vector
+  var Fv : N, vector
+  var τ : N*m, vector              -- torque has the dimension of energy, but reads N*m
+  var d : km
+  var t : h, positive
+
+  law newton:  F = m*a
+  law kinetic: E = m*v^2/2
+  law torque:  τ = cross(r, Fv)
+  law average: v = d/t             -- km/h is a speed, like m/s
+
+  derive accel:                    -- shown in m/s^2, the unit a was declared in
+    solve newton for a
+  end
+end
+
+theory Electromagnetism
+  import SI
+  var q, Q : C
+  var ε0 : F/m, positive
+  var μ0 : H/m, positive
+  var R : m, positive
+  var E : V/m
+  var B : T                        -- tesla: in SI, T is the unit, not time
+  var c : m/s, positive
+  var Fm : N
+  var v : m/s
+
+  law coulomb: E = Q/(4*pi*ε0*R^2)
+  law light:   c = 1/sqrt(μ0*ε0)
+  law magnetic: Fm = q*v*B         -- N = C * m/s * T
+
+  derive permittivity:             -- ε0 = 1/(c^2*μ0), in F/m
+    solve light for ε0
+  end
+end
+
+-- Units can also be declared in a theory of your own.
+theory Imperial
+  import SI
+  unit ft = 0.3048*m, mi = 5280*ft, lbf = 4.4482216152605*N
+  var height : ft
+  var weight : lbf
+  var work : J
+  law lifting: work = weight*height
+end

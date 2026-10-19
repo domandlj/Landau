@@ -1,0 +1,29 @@
+-- Range of a projectile, derived from the kinematics of constant acceleration.
+-- The motion is one vector law in the plane; its x and y components do the work.
+
+theory Kinematics
+  dim L, T
+  var r, r0 : L, vector(2)         -- position, starting position
+  var v0    : L/T, vector(2)       -- initial velocity
+  var a     : L/T^2, vector(2)     -- constant acceleration
+  var t     : T, positive
+
+  law position: r = r0 + v0*t + a*t^2/2
+end
+
+theory Projectile
+  import Kinematics
+  var v : L/T, positive            -- launch speed
+  var θ : 1                        -- launch angle
+  var g : L/T^2, positive
+  var R : L                        -- range
+
+  derive range:
+    m  := position[r0 := vec(0, 0), v0 := vec(v*cos(θ), v*sin(θ)), a := vec(0, -g), r := vec(R, 0)]
+    hx := component x of m           -- R = v*cos(θ)*t
+    hy := component y of m           -- 0 = v*sin(θ)*t - g*t^2/2
+    tf := solve hy for t
+    rr := subst tf into hx
+    simplify rr                      -- R = v^2*sin(2*θ)/g
+  end
+end

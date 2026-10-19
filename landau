@@ -1,0 +1,6 @@
+#!/bin/sh
+# Build if needed and run Landau: ./landau [-v] file.lan ...
+HERE="$(cd "$(dirname "$0")" && pwd)"
+eval "$(opam env --switch=landau)"
+dune build --root "$HERE" 2>&1 | grep -v "^Entering\|^Leaving" >&2
+exec "$HERE/_build/default/bin/main.exe" "$@"

@@ -1,0 +1,25 @@
+theory Atom
+  import Constants
+  var F : N
+  var r : m, positive
+  var E : eV
+  var λ : nm, positive
+  var f : Hz
+  law coulomb: F = k_e*e^2/r^2
+  law photon:  E = h*c/λ
+  derive bohr_force:              -- about 8.24e-8 N
+    a := coulomb[r := 5.29e-11 [m]]
+    evaluate a digits 3
+  end
+  derive green_photon:            -- about 2.33 eV
+    a := photon[λ := 532 [nm]]
+    evaluate a digits 3
+  end
+  derive in_joules:
+    a := photon[λ := 532 [nm]]
+    evaluate a in J digits 4
+  end
+  derive symbolic:                -- constants stay symbols in algebra
+    solve photon for λ
+  end
+end

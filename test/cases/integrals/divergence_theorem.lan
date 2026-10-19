@@ -1,0 +1,33 @@
+theory DivTheorem
+  dim L
+  var r : L, position
+  var R : L, positive
+  var ρ : L
+  var θ, φ : 1
+  var F(r) : L, vector
+  var Out, In : L^3
+  law field: F = vec(r.x, r.y, r.z)
+  law flux:  Out = surface(F, vec(R*sin(θ)*cos(φ), R*sin(θ)*sin(φ), R*cos(θ)), θ, 0, pi, φ, 0, 2*pi)
+  law source: In = volume(div(F), vec(ρ*sin(θ)*cos(φ), ρ*sin(θ)*sin(φ), ρ*cos(θ)), ρ, 0, R, θ, 0, pi, φ, 0, 2*pi)
+  derive outward:
+    f := subst field into flux
+    simplify f
+  end
+  derive inside:
+    f := subst field into source
+    simplify f
+  end
+end
+
+theory Bad
+  dim L, T
+  var r : L, position(2)
+  var s : 1
+  var t : T
+  var a : L
+  var A : L^2
+  law b1: A = surface(1, vec(s, s), s, 0, 1, s, 0, 1)
+  law b2: a = line(1, vec(a*s, 0), s, 0, t)
+  law b3: a = line(1, vec(a*s, 0), 2*s, 0, 1)
+  law b4: a = line(1, vec(a*s, 0, 0), s, 0, 1)
+end

@@ -1,0 +1,6 @@
+theory K
+  import SI
+  def kinetic(m : kg, v : m/s) = m*v^2/2
+  compute kinetic(2 [kg], 3 [m/s])
+  compute kinetic(2 [kg], 3 [s])
+end

@@ -1,0 +1,8 @@
+dim L
+var r : L, position
+var k : 1/L, vector
+var s : 1
+law p: s = diff(dot(k, r), r.x)*r.x
+derive bug:
+  simplify p
+end

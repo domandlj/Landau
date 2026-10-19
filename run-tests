@@ -1,0 +1,26 @@
+#!/bin/sh
+# Run every test: the language (dune cram tests in test/) and the web app
+# (Vitest in web/test/). ./run-tests [lang|web]
+HERE="$(cd "$(dirname "$0")" && pwd)"
+what="${1:-all}"
+status=0
+
+if [ "$what" = all ] || [ "$what" = lang ]; then
+  echo "== language: dune test"
+  eval "$(opam env --switch=landau)"
+  # dune prints only the differences from the expected output
+  if out="$(dune test --root "$HERE" 2>&1)"; then
+    echo "language tests passed"
+  else
+    printf '%s\n' "$out" | grep -v "^Entering\|^Leaving"
+    echo "language tests FAILED (after an intended change: dune promote)"
+    status=1
+  fi
+fi
+
+if [ "$what" = all ] || [ "$what" = web ]; then
+  echo "== web app: vitest"
+  (cd "$HERE/web" && npx vitest run) || status=1
+fi
+
+exit $status

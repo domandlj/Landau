@@ -1,0 +1,13 @@
+dim L, T
+var x : L
+var t, t0 : T
+var v : L/T
+law vel: v = diff(x, t)
+def rate(q, s) = diff(q, s)
+law vel2: v = rate(x, t)
+derive bad:
+  vel[t := 0]
+end
+derive rename:
+  vel[t := t0]
+end

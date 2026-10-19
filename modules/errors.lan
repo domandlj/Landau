@@ -1,0 +1,30 @@
+-- Each law below has a dimension error.
+
+theory Broken
+  dim L, T
+  var x : L
+  var v : L/T
+  var t : T
+
+  law sum:       x = v*t + v
+  law exponent:  x = x*exp(t)
+  law sides:     x = v
+  law power:     x = t^x
+
+  def speed(d, t) = d/t
+  law call:      v = speed(t, x) + x
+end
+
+-- Each law below misuses a vector.
+
+theory BrokenVectors
+  dim M, L, T
+  var m : M
+  var s : L/T
+  var v, u : L/T, vector
+  var p : M*L/T, vector
+
+  law shapes:    p = m*s                -- a vector equal to a scalar
+  law product:   m*v*u = p              -- vectors multiply with dot or cross
+  law magnitude: s = abs(v)             -- the length of a vector is norm(v)
+end

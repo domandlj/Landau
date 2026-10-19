@@ -1,0 +1,58 @@
+theory Ok
+  dim M, L, T
+  var r : L, position
+  var a, b : L, vector
+  var s, d : L
+  var F : M*L/T^2, vector
+  var τ : M*L^2/T^2, vector
+  var E : M*L^2/T^2
+
+  law len:      s = norm(vec(3, 4)*d)
+  law torque:   τ = cross(r, F)
+  law work:     E = dot(F, a)
+  law ax:       s = a.x + b.y
+  law curlfree: curl(grad(E)) = 0
+
+  derive len5:
+    simplify len
+  end
+  derive tz:
+    component z of torque
+  end
+  derive work_xyz:
+    expand work
+  end
+  derive curl_x:
+    c := curlfree
+    component x of c
+  end
+end
+
+theory FourVectors
+  dim L, T
+  var c : L/T, positive
+  var t : T
+  var x : L, vector(4)
+  var X : L, vector(4)
+  law event: X = vec(c*t, x.2, x.3, x.4)
+  derive time:
+    e := component 1 of event
+    solve e for t
+  end
+end
+
+theory Bad
+  dim L, T
+  var r2 : L, position(2)
+  var p, q : L, vector(2)
+  var w : L, vector
+  var s : L
+  var t : T
+  law mix:    p = w
+  law dot23:  s = dot(p, w)
+  law cross2: w = cross(p, q)
+  law curl2:  p = curl(p)
+  law nocomp: s = p.z
+  law vecdim: p = vec(s, t)
+  law scalc:  s = s.x
+end

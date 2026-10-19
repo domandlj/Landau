@@ -1,0 +1,52 @@
+theory Mechanics
+  import SI
+  var m : kg, positive
+  var v : m/s
+  var a : m/s^2
+  var F : N
+  var r : m, vector
+  var Fv : N, vector
+  var τ : N*m, vector             -- torque: same dimension as energy, shown as N m
+  var E : J
+  var d : km
+  var t : h
+
+  law newton: F = m*a
+  law kinetic: E = m*v^2/2
+  law torque: τ = cross(r, Fv)
+  law speed: v = d/t               -- km/h is a speed too
+
+  derive accel:
+    solve newton for a
+  end
+end
+
+theory Fields
+  import SI
+  var Q : C
+  var ε0 : F/m, positive
+  var μ0 : H/m, positive
+  var R : m, positive
+  var E : V/m
+  var B : T
+  var c : m/s, positive
+  var ω : 1/s
+  law coulomb: E = Q/(4*pi*ε0*R^2)
+  law light: c = 1/sqrt(μ0*ε0)
+  derive eps:
+    solve light for ε0
+  end
+  derive mu_c:
+    solve light for μ0
+  end
+end
+
+theory Auto
+  import SI
+  var x : Length
+  var q : Current*Time
+  var p : Mass*Length/Time^2/Length^2       -- a pressure, written in dimensions
+  var eps : Current^2*Time^4/(Mass*Length^3)
+  var f : 1/Time
+  law two: x = x
+end

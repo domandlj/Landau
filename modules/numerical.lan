@@ -1,0 +1,48 @@
+-- Numerical solutions, for equations with no formula for the answer.
+--   solve eq for x numerically near 1 [s]      a root near a first guess
+--   simulate name: laws for x, y from t = 0 [s] to 10 [s] with x(0) = ..., ...
+--                                              integrate differential equations
+-- Everything except the unknowns needs a value. The results are shown as
+-- plots (and a table) in the units of each quantity.
+
+theory Kepler
+  var E, M, e : 1                  -- eccentric anomaly, mean anomaly, eccentricity
+  law kepler: M = E - e*sin(E)
+
+  derive anomaly:                  -- E = 1.4987: no formula, so numerically
+    k := kepler[M := 1, e := 0.5]
+    solve k for E numerically near 1 digits 5
+  end
+end
+
+-- The pendulum without the small-angle approximation, next to the one with
+-- it: from 1.2 rad the approximation runs ahead, since a real pendulum's
+-- period grows with its amplitude.
+theory Pendulums
+  import SI
+  const g = 9.81 [m/s^2], L = 1 [m]
+  var t : s
+  var θ(t) : 1                     -- the real pendulum
+  var φ(t) : 1                     -- with sin(φ) ≈ φ
+
+  law exact: diff(diff(θ, t), t) = -(g/L)*sin(θ)
+  law small: diff(diff(φ, t), t) = -(g/L)*φ
+
+  simulate swing: exact, small for θ, φ from t = 0 [s] to 10 [s]
+    with θ(0) = 1.2, at(diff(θ, t), t, 0) = 0, φ(0) = 1.2, at(diff(φ, t), t, 0) = 0
+end
+
+-- The Earth around the Sun: two coupled equations, x and y.
+theory Orbit
+  import SI
+  const GM = 1.32712e20 [m^3/s^2]  -- the Sun's G*M
+  var t : s
+  var x(t), y(t) : m
+
+  law ax: diff(diff(x, t), t) = -GM*x/(x^2 + y^2)^(3/2)
+  law ay: diff(diff(y, t), t) = -GM*y/(x^2 + y^2)^(3/2)
+
+  simulate year: ax, ay for x, y from t = 0 [s] to 3.156e7 [s]
+    with x(0) = 1.496e11 [m], at(diff(x, t), t, 0) = 0 [m/s],
+         y(0) = 0 [m], at(diff(y, t), t, 0) = 29.78 [km/s]
+end

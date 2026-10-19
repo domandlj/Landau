@@ -1,0 +1,3 @@
+theory W
+  import errors
+end

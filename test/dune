@@ -1,0 +1,13 @@
+; Cram tests: each .t file is a transcript of commands and their expected
+; output. `dune test` runs them and shows any difference; after an intended
+; change, `dune promote` accepts the new output.
+;
+; Dune reruns a test only when one of these changes, so the SymPy worker is
+; listed too: without it, a change there would pass on old output.
+
+(cram
+ (deps
+  %{bin:landau}
+  %{project_root}/cas/worker.py
+  (glob_files %{project_root}/modules/*.lan)
+  (glob_files_rec cases/**.lan)))

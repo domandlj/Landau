@@ -1,0 +1,12 @@
+dim L
+var r : L, position
+var s : 1
+var t : L
+law p: vec(s, s, s) = diff(r, r.y)*t/t
+law q: s = diff(norm(r), r.x)*norm(r)/r.x
+derive a:
+  simplify p
+end
+derive b:
+  simplify q
+end

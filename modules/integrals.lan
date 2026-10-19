@@ -1,0 +1,94 @@
+-- Integrals over lines, surfaces and volumes, improper integrals, and the
+-- theorems of Gauss and Stokes checked on examples.
+--   line(F, p, s, a, b)    ∫ F·dr along the path p(s), s from a to b
+--                          (∫ f dl when f is a scalar); loop(...) is ∮
+--   surface(F, q, u, u1, u2, w, w1, w2)      ∬ F·dA (or ∬ f dA)
+--   volume(f, q, u, u1, u2, v, v1, v2, w, w1, w2)   ∭ f dV
+-- The tangent, the normal dq/du × dq/dw and the Jacobian are worked out.
+
+theory Shapes
+  dim M, L
+  var r : L, position
+  var R, h : L, positive
+  var ρ, ϱ, z : L                   -- spherical and cylindrical radius, height
+  var θ, φ : 1                      -- angles
+  var ρ0 : M/L^3, positive          -- density
+  var Area : L^2
+  var Vol : L^3
+  var Mass : M
+
+  law sphere: Area = surface(1, vec(R*sin(θ)*cos(φ), R*sin(θ)*sin(φ), R*cos(θ)), θ, 0, pi, φ, 0, 2*pi)
+  law ball:   Vol = volume(1, vec(ρ*sin(θ)*cos(φ), ρ*sin(θ)*sin(φ), ρ*cos(θ)), ρ, 0, R, θ, 0, pi, φ, 0, 2*pi)
+  -- a cone: the radius shrinks with the height
+  law cone:   Mass = volume(ρ0, vec(ϱ*cos(φ), ϱ*sin(φ), z), ϱ, 0, R*(1 - z/h), φ, 0, 2*pi, z, 0, h)
+
+  derive sphere_area:               -- 4*pi*R^2
+    simplify sphere
+  end
+  derive ball_volume:               -- 4*pi*R^3/3
+    simplify ball
+  end
+  derive cone_mass:                 -- pi*ρ0*h*R^2/3
+    simplify cone
+  end
+end
+
+theory Improper
+  dim L, T
+  var x : L
+  var t : T
+  var a : L, positive
+  var τ : T, positive               -- lifetime
+  var G : L
+  var P : 1
+
+  law gaussian: G = integral(exp(-x^2/a^2), x, -inf, inf)
+  law decay:    P = integral(exp(-t/τ), t, 0, inf)/τ      -- total probability
+
+  derive gaussian_value:            -- a*sqrt(pi)
+    simplify gaussian
+  end
+  derive normalized:                -- 1
+    simplify decay
+  end
+end
+
+-- Gauss: the flux of F out of a closed surface equals the integral of div(F)
+-- inside. Stokes: the circulation of F around a loop equals the flux of
+-- curl(F) through it. Both sides are computed separately.
+theory Theorems
+  dim L
+  var r : L, position
+  var R : L, positive
+  var ρ, ϱ : L
+  var θ, φ, s : 1
+  var F(r) : L, vector
+  var Out, Inside : L^3
+  var Around, Through : L^2
+
+  law radial: F = vec(r.x, r.y, r.z)
+  law flux:   Out = surface(F, vec(R*sin(θ)*cos(φ), R*sin(θ)*sin(φ), R*cos(θ)), θ, 0, pi, φ, 0, 2*pi)
+  law source: Inside = volume(div(F), vec(ρ*sin(θ)*cos(φ), ρ*sin(θ)*sin(φ), ρ*cos(θ)), ρ, 0, R, θ, 0, pi, φ, 0, 2*pi)
+
+  derive gauss_outside:             -- 4*pi*R^3
+    f := subst radial into flux
+    simplify f
+  end
+  derive gauss_inside:              -- 4*pi*R^3, the same
+    f := subst radial into source
+    simplify f
+  end
+
+  law swirl:       F = vec(-r.y, r.x, 0)
+  law circulation: Around = loop(F, vec(R*cos(s), R*sin(s), 0), s, 0, 2*pi)
+  law curl_flux:   Through = surface(curl(F), vec(ϱ*cos(φ), ϱ*sin(φ), 0), ϱ, 0, R, φ, 0, 2*pi)
+
+  derive stokes_around:             -- 2*pi*R^2
+    c := subst swirl into circulation
+    simplify c
+  end
+  derive stokes_through:            -- 2*pi*R^2, the same
+    c := subst swirl into curl_flux
+    simplify c
+  end
+end

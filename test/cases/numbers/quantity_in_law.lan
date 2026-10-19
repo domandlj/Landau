@@ -1,0 +1,13 @@
+theory Q
+  import SI
+  var W : N
+  var m : kg, positive
+  law w: W = m*9.81 [m/s^2]
+  derive mass:
+    solve w for m
+  end
+  derive mass_value:
+    s := solve w for m
+    evaluate s[W := 49.05 [N]]
+  end
+end

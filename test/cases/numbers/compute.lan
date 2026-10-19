@@ -1,0 +1,34 @@
+theory Energy
+  import Constants
+  def kinetic(m, v) = m*v^2/2
+  def potential(m, h) = m*g*h
+  def period(l) = 2*pi*sqrt(l/g)
+
+  compute kinetic(2 [kg], 3 [m/s])
+  compute kinetic(1500 [kg], 100 [km/h]) in kJ digits 3
+  compute E1 = kinetic(2 [kg], 3 [m/s])
+  compute E1/(2 [s]) in W
+  compute potential(70 [kg], 10 [m]) digits 3
+  compute period(1 [m]) digits 4
+  compute h_drop = E1/(2 [kg]*g) in cm digits 3
+  compute sin(pi/6)
+  compute c/(1 [km/s]) digits 4
+
+  var x : m
+  law fall: x = h_drop
+  derive check:
+    evaluate fall in mm
+  end
+end
+
+theory Bad
+  import SI
+  def kinetic(m, v) = m*v^2/2
+  var y : m
+  var F : N, vector
+  compute kinetic(2 [kg], 3 [s])
+  compute kinetic(2 [kg], y)
+  compute F
+  compute kinetic(2 [kg], 3 [m/s]) in m/s
+  compute kinetic(2 [kg], 3 [m/s]) digits 0
+end

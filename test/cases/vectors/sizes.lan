@@ -1,0 +1,4 @@
+dim L
+var a : L, vector(0)
+var b : L, positive(2)
+var c : L, vector(2.5)

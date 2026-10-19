@@ -1,0 +1,21 @@
+theory E
+  import SI
+  const g = 9.81 [m/s^2]
+  var t : s
+  var x(t) : m
+  var y : m
+  var k : 1/s^2
+  var z(t) : m
+  law fall: diff(diff(x, t), t) = -g
+  law spring: diff(diff(x, t), t) = -k*x
+  law alg: z = 2*x
+  simulate s1: fall for x from t = 0 [s] to 2 [s] with x(0) = 0 [m]
+  simulate s2: fall for x from t = 0 [s] to 2 [s] with x(0) = 0 [m], at(diff(x, t), t, 0) = 0 [m/s], at(diff(diff(x, t), t), t, 0) = 0 [m/s^2]
+  simulate s3: spring for x from t = 0 [s] to 2 [s] with x(0) = 1 [m], at(diff(x, t), t, 0) = 0 [m/s]
+  simulate s4: fall for y from t = 0 [s] to 2 [s] with x(0) = 0 [m]
+  simulate s5: fall for x from t = 0 [s] to 2 [s] with x(1 [s]) = 0 [m], at(diff(x, t), t, 0) = 0 [m/s]
+  simulate s6: fall for x from t = 2 [s] to 0 [s] with x(2 [s]) = 0 [m], at(diff(x, t), t, 2 [s]) = 0 [m/s]
+  simulate s7: fall for x from t = 0 [s] to 2 [m] with x(0) = 0 [m], at(diff(x, t), t, 0) = 0 [m/s]
+  simulate s8: fall, alg for x, z from t = 0 [s] to 2 [s] with x(0) = 0 [m], at(diff(x, t), t, 0) = 0 [m/s]
+  simulate s9: fall for x from t = 0 [s] to 2 [s] with x(0) = 0 [s], at(diff(x, t), t, 0) = 0 [m/s]
+end

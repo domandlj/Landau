@@ -1,0 +1,32 @@
+-- Rational exponents: a 3D wavefunction has dimension L^(-3/2).
+
+theory Schrodinger
+  dim M, L, T
+  var ħ : M*L^2/T
+  var m : M, positive
+  var V : M*L^2/T^2
+  var t : T
+  var x : L
+  var r : L, position              -- grad, div, curl and lap differentiate by r
+  var ψ(r, t) : L^(-3/2), complex       -- the wavefunction depends on position and time
+  var k : 1/L, vector              -- wave vector
+  var ω : 1/T
+
+  law schrodinger: im*ħ*diff(ψ, t) = -(ħ^2/(2*m))*lap(ψ) + V*ψ
+  law density: abs(ψ)^2 = 1/x^3
+  def plane_wave(A) = A*exp(im*(dot(k, r) - ω*t))
+end
+
+-- A free plane wave solves the Schrödinger equation only if its frequency
+-- and wave vector are related: ħω = ħ²|k|²/(2m) + V.
+theory Dispersion
+  import Schrodinger
+  var A : L^(-3/2), complex          -- amplitude
+
+  law wave: im*ħ*diff(plane_wave(A), t) = -(ħ^2/(2*m))*lap(plane_wave(A)) + V*plane_wave(A)
+
+  derive dispersion:
+    e := expand wave
+    solve e for ω
+  end
+end

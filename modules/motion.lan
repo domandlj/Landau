@@ -1,0 +1,86 @@
+-- Calculus: velocity and acceleration as derivatives, and identities of
+-- vector calculus checked by expanding them in components.
+
+theory Motion
+  dim L, T
+  var t : T
+  var x(t) : L                     -- x depends on t; undeclared variables are constants
+  var v(t) : L/T
+  var a(t) : L/T^2
+  var x0 : L
+  var v0 : L/T
+  var g  : L/T^2, positive
+
+  law position: x = x0 + v0*t - g*t^2/2     -- thrown straight up
+  law velocity: v = diff(x, t)
+  law accel:    a = diff(v, t)
+
+  derive speed:                    -- v = v0 - g*t
+    s := subst position into velocity
+    simplify s
+  end
+
+  derive gravity:                  -- a = -g
+    s := subst speed into accel
+    simplify s
+  end
+
+  derive highest:                  -- the top is where v = 0
+    s := speed[v := 0]
+    solve s for t
+  end
+
+  derive twice:                    -- d²x/dt² = -g, straight from the position
+    d1 := differentiate position by t
+    d2 := differentiate d1 by t
+    simplify d2
+  end
+end
+
+-- The same motion as a differential equation: solving it gives the
+-- position, and integrating the velocity gives the displacement.
+theory Oscillations
+  import Motion
+  var ω  : 1/T, positive
+  var T1 : T, positive
+
+  law falling: diff(diff(x, t), t) = -g
+  law spring:  diff(diff(x, t), t) = -ω^2*x
+
+  derive general:                  -- the constants get their dimensions inferred
+    solve falling for x
+  end
+
+  derive thrown:
+    solve falling for x with x(0) = x0, at(diff(x, t), t, 0) = v0
+  end
+
+  derive oscillator:               -- released from rest at x0
+    solve spring for x with x(0) = x0, at(diff(x, t), t, 0) = 0
+  end
+
+  derive displacement:             -- ∫ v dt from 0 to T1 = x(T1) - x(0)
+    i := integrate velocity by t from 0 to T1
+    simplify i
+  end
+end
+
+theory Identities
+  dim L
+  var r : L, position
+  var f(r) : L                     -- any scalar field
+  var F(r) : L, vector             -- any vector field
+
+  law curl_grad: curl(grad(f)) = 0
+  law div_curl:  div(curl(F)) = 0
+
+  derive check_curl_grad:          -- holds because mixed partial derivatives commute
+    e := expand curl_grad
+    simplify e
+  end
+
+  derive check_div_curl:
+    e := expand div_curl
+    simplify e
+  end
+end

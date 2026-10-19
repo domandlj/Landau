@@ -1,0 +1,21 @@
+theory Gravity
+  dim M, L, T
+  var r : L, position
+  var s : 1
+  var p(s) : L, vector
+  var F(r) : M*L/T^2, vector
+  var W : M*L^2/T^2
+  var m : M, positive
+  var g : L/T^2, positive
+  var h : L, positive
+
+  law work: W = integral(dot(F(p), diff(p, s)), s, 0, 1)
+  law field: F = vec(0, 0, -m*g)           -- uniform gravity
+  law path:  p = vec(h*s, 0, h*s)          -- a straight ramp down... up by h
+
+  derive lifted:
+    a := subst field into work
+    b := subst path into a
+    simplify b
+  end
+end

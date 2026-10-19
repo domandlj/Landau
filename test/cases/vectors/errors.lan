@@ -1,0 +1,36 @@
+dim M, L, T
+var r : L, position
+var m : M, positive
+var t : T
+var v, u : L/T, vector
+var p : M*L/T, vector
+var s : L/T
+var φ : M*L^2/T^2
+
+law ok1:    p = m*v
+law ok2:    curl(v) = 0
+law ok3:    s = norm(v)
+law vec_scalar:  p = m*s
+law two_vecs:    m*v*u = p
+law divide:      s = p/v
+law power:       s^2 = v^2
+law sin_vec:     sin(v/s) = 1
+law abs_vec:     s = abs(v)
+law grad_vec:    grad(v) = v
+law div_scalar:  div(s) = s/r
+law diff_expr:   s = diff(s, 2*t)
+law wrong_dim:   p = m*diff(v, r)
+def f(a, b) = dot(a, b)
+law f_bad:       s = f(s, s)
+def curl(x) = x
+var w : L, vector, positive
+var r2 : L, position
+derive solve_scalar:
+  solve ok1 for m
+end
+derive solve_vector:
+  solve ok3 for v
+end
+derive bad_subst:
+  ok1[v := s]
+end

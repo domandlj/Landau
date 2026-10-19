@@ -1,0 +1,12 @@
+theory E
+  dim M, L, T
+  var x : L
+  var m : M
+  var t : T
+  groups impossible: t from x, m
+  groups twice: x, m, x
+  groups target_twice: x from x, m
+  groups unknown: x from y
+  def d(z) = z
+  groups notvar: x from d
+end

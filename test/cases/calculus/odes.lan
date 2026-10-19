@@ -1,0 +1,39 @@
+theory RC
+  import SI
+  var t : s, positive
+  var q(t) : C                       -- charge on the capacitor
+  var R : Ω, positive
+  var Cap : F, positive
+  var Q0 : C, positive
+  law discharge: R*diff(q, t) + q/Cap = 0
+  derive charge:
+    solve discharge for q with q(0) = Q0
+  end
+end
+
+theory Damped
+  import SI
+  var t : s, positive
+  var x(t) : m
+  var m : kg, positive
+  var k : N/m, positive            -- spring constant
+  var b : kg/s, positive           -- damping
+  var x0 : m
+  law motion: m*diff(diff(x, t), t) = -k*x - b*diff(x, t)
+  derive general:
+    solve motion for x
+  end
+end
+
+theory Drag
+  import SI
+  var t : s, positive
+  var v(t) : m/s
+  var m : kg, positive
+  var g : m/s^2, positive
+  var b : kg/s, positive
+  law falling: m*diff(v, t) = m*g - b*v
+  derive speed:
+    solve falling for v with v(0) = 0 [m/s]
+  end
+end

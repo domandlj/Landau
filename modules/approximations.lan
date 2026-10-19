@@ -1,0 +1,69 @@
+-- Approximations and limits.
+--   approximate eq where v << c order 2   expand in the small ratio v/c, keeping
+--                                         terms up to (v/c)^2; order 1 by default
+--   limit eq as t -> inf                  the limit of both sides
+-- A small quantity is small compared with something of the same dimension,
+-- so v/c must be dimensionless. The derived law records the approximation
+-- and the first term it left out.
+
+theory Relativity
+  import SI
+  var m : kg, positive
+  var v, c : m/s, positive
+  var E : J
+
+  law energy: E = m*c^2/sqrt(1 - v^2/c^2)
+
+  derive classical:                -- E = m*c^2 + m*v^2/2: rest energy plus kinetic
+    approximate energy where v << c order 2
+  end
+end
+
+theory Pendulum
+  import SI
+  var t : s, positive
+  var θ(t) : 1                     -- angle from the vertical
+  var g : m/s^2, positive
+  var L : m, positive
+  var θ0 : 1, positive
+
+  law exact: diff(diff(θ, t), t) = -(g/L)*sin(θ)
+
+  derive small_angles:             -- sin(θ) ≈ θ
+    approximate exact where θ << 1
+  end
+
+  derive swing:                    -- θ = θ0*cos(sqrt(g/L)*t), only for small swings
+    s := approximate exact where θ << 1
+    solve s for θ with θ(0) = θ0, at(diff(θ, t), t, 0) = 0
+  end
+end
+
+theory Altitude
+  import Constants
+  var M : kg, positive             -- the Earth's mass
+  var R, z : m, positive           -- its radius, and the height above it
+  var gz : m/s^2
+
+  law gravity: gz = G*M/(R + z)^2
+
+  derive near_surface:             -- gz = G*M/R^2 - 2*G*M*z/R^3
+    approximate gravity where z << R
+  end
+end
+
+theory Terminal
+  import SI
+  var t : s, positive
+  var v(t) : m/s
+  var m : kg, positive
+  var g : m/s^2, positive
+  var b : kg/s, positive           -- linear drag
+
+  law falling: m*diff(v, t) = m*g - b*v
+
+  derive terminal:                 -- v(inf) = m*g/b
+    s := solve falling for v with v(0) = 0 [m/s]
+    limit s as t -> inf
+  end
+end

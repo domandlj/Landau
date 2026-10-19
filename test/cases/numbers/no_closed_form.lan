@@ -1,0 +1,22 @@
+theory Wien
+  var x : 1                         -- x = h*c/(λ*k_B*T) at the peak of Planck's law
+  law peak: x = 5*(1 - exp(-x))     -- transcendental: no closed form
+  derive wien_x:
+    solve peak for x numerically near 5 digits 6
+  end
+end
+
+theory Integral
+  import SI
+  var u : 1
+  compute integral(exp(-u^3), u, 0, 1) digits 6     -- no elementary antiderivative
+end
+
+theory Systems
+  var x, y : 1
+  law circle: x^2 + y^2 = 4
+  law curve:  y = exp(x)
+  derive both:
+    solve circle, curve for x, y
+  end
+end

@@ -1,0 +1,102 @@
+-- Free-body diagrams: list the forces on a body, and Landau writes Newton's
+-- second law for it (m a = sum of the forces) and draws the diagram.
+--   diagram name:
+--     body m                          its mass
+--     force W = m*g toward down       a force: its size, and its direction:
+--                                     up, down, left, right, angle(θ) (from
+--                                     +x, counterclockwise) or any vector
+--     force N toward angle(θ)         without a size, the variable N is it
+--     accelerates a toward angle(θ)   without this line, the body is at rest
+--     plane angle(α)                  the surface it is on, for the picture
+--     draw α = 0.5                    values used only for the picture
+--     mark α between plane and right  an angle to show; with the draw values,
+--                                     Landau checks it is that angle
+--   end
+-- Use the law like any other: take components, solve.
+
+theory Incline
+  import SI
+  var m : kg, positive
+  var g : m/s^2, positive
+  var α, μ : 1, positive           -- the slope's angle; the friction coefficient
+  var N, f : N
+  var a : m/s^2
+
+  diagram sliding:                 -- a block sliding down, slowed by friction
+    body m
+    force W = m*g toward down
+    force N toward angle(α + pi/2) -- perpendicular to the slope
+    force f = μ*N toward angle(α)  -- up the slope, against the motion
+    accelerates a toward angle(α + pi)
+    plane angle(α)
+    draw α = 0.5
+    mark α between plane and right -- the slope
+    mark α between N and up        -- the same angle, between N and the vertical
+  end
+
+  derive acceleration:             -- a = g*(sin α - μ cos α)
+    x := component x of sliding
+    y := component y of sliding
+    solve x, y for a, N
+  end
+
+  derive normal_force:             -- N = m*g*cos α
+    x := component x of sliding
+    y := component y of sliding
+    solve x, y for N, a
+  end
+end
+
+theory Knot
+  import SI
+  var m : kg, positive
+  var g : m/s^2, positive
+  var T1, T2 : N
+  var β : 1, positive              -- each rope's angle above the horizontal
+
+  diagram hanging:                 -- at rest: the forces add to zero
+    body m
+    force W = m*g toward down
+    force T1 toward angle(pi - β)
+    force T2 toward angle(β)
+    draw β = 0.6
+    mark β between T1 and left
+    mark β between T2 and right
+  end
+
+  derive tension:                  -- T1 = m*g/(2 sin β): the flatter, the tighter
+    x := component x of hanging
+    y := component y of hanging
+    solve x, y for T1, T2
+  end
+end
+
+-- Two masses over a pulley: a diagram for each, sharing the rope's tension T
+-- and the size of the acceleration a.
+theory Atwood
+  import SI
+  var m1, m2 : kg, positive
+  var g : m/s^2, positive
+  var T : N
+  var a : m/s^2
+
+  diagram heavy:
+    body m1
+    force W1 = m1*g toward down
+    force T toward up
+    accelerates a toward down
+  end
+
+  diagram light:
+    body m2
+    force W2 = m2*g toward down
+    force T toward up
+    accelerates a toward up
+  end
+
+  derive acceleration:             -- a = g*(m1 - m2)/(m1 + m2)
+    h := component y of heavy
+    l := component y of light
+    solve h, l for a, T
+  end
+end

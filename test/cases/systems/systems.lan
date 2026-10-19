@@ -1,0 +1,63 @@
+theory Collision
+  dim M, L, T
+  var m1, m2 : M, positive
+  var v1, v2 : L/T                 -- before
+  var u1, u2 : L/T                 -- after
+  law momentum: m1*v1 + m2*v2 = m1*u1 + m2*u2
+  law energy:   m1*v1^2/2 + m2*v2^2/2 = m1*u1^2/2 + m2*u2^2/2
+
+  derive try_it:
+    solve momentum, energy for u1, u2, root 2
+  end
+end
+
+theory Circuit
+  dim M, L, T, I
+  dim Volt = M*L^2/(T^3*I)
+  dim Ohm = M*L^2/(T^3*I^2)
+  var ε1, ε2 : Volt
+  var R1, R2, R3 : Ohm, positive
+  var I1, I2, I3 : I
+  law junction: I1 + I2 = I3
+  law loop1:    ε1 = I1*R1 + I3*R3
+  law loop2:    ε2 = I2*R2 + I3*R3
+  derive current3:
+    solve junction, loop1, loop2 for I3, I1, I2
+  end
+end
+
+theory Collision2D
+  dim M, L, T
+  var m : M, positive
+  var v : L/T, positive
+  var u1, u2 : L/T, vector(2)
+  var a, b : L/T
+  law momentum: m*vec(v, 0) = m*u1 + m*u2
+  derive split:
+    p := momentum[u1 := vec(a, a), u2 := vec(b, -a)]
+    solve p for b, a
+  end
+end
+
+theory Bad
+  dim L, T
+  var x, y : L
+  var t : T
+  var p : L, vector
+  var f(t) : L
+  law a: x + y = 2*x
+  law b: x - y = 0
+  law c: diff(f, t) = x/t
+  derive e1:
+    solve a, b for p
+  end
+  derive e2:
+    solve a, c for x, f
+  end
+  derive e3:
+    solve a, b for x, y with x = 0
+  end
+  derive e4:
+    solve a, b for x, y, root 5
+  end
+end

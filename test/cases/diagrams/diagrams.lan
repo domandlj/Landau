@@ -1,0 +1,73 @@
+theory Incline
+  import SI
+  var m : kg, positive
+  var g : m/s^2, positive
+  var α, μ : 1, positive
+  var N, f : N
+  var a : m/s^2
+
+  diagram sliding:
+    body m
+    force W = m*g toward down
+    force N toward angle(α + pi/2)
+    force f = μ*N toward angle(α)
+    accelerates a toward angle(α + pi)
+    plane angle(α)
+    draw α = 0.5
+  end
+
+  derive acceleration:             -- a = g*(sin α - μ cos α)
+    x := component x of sliding
+    y := component y of sliding
+    solve x, y for a, N
+  end
+  derive normal:                   -- N = m*g*cos α
+    x := component x of sliding
+    y := component y of sliding
+    solve x, y for N, a
+  end
+end
+
+theory Hanging
+  import SI
+  var m : kg, positive
+  var g : m/s^2, positive
+  var T1, T2 : N
+  var β : 1, positive
+  diagram knot:                    -- at rest: the forces add to zero
+    body m
+    force W = m*g toward down
+    force T1 toward angle(pi - β)
+    force T2 toward angle(β)
+    draw β = 0.6
+  end
+  derive tension:
+    x := component x of knot
+    y := component y of knot
+    solve x, y for T1, T2
+  end
+end
+
+theory Bad
+  import SI
+  var m : kg
+  var g : m/s^2
+  var v : m/s
+  var θ : 1
+  diagram b1:
+    body m
+    force W = m*g toward down
+    force P = m*v toward right
+  end
+  diagram b2:
+    body m
+    force W = m*g toward 3
+  end
+  diagram b3:
+    force W = m*g toward down
+  end
+  diagram b4:
+    body m
+    force W = m*g toward angle(θ)
+  end
+end

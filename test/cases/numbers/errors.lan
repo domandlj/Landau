@@ -1,0 +1,42 @@
+theory E
+  import SI
+  const g = 9.81 [m/s^2]
+  var m, M : kg
+  var W : N
+  var v : m/s
+  var F : N, vector
+  law weight: W = m*g
+  law two: W = M*g + m*g
+  law vec: F = m*vec(0, 0, -g)
+  derive e1:
+    evaluate weight
+  end
+  derive e2:
+    evaluate weight[m := 2 [kg]] in m/s
+  end
+  derive e3:
+    evaluate weight[W := 20 [N], m := 2 [kg]]
+  end
+  derive e4:
+    evaluate vec[m := 1 [kg]]
+  end
+  derive e5:
+    evaluate two
+  end
+  derive e6:
+    a := weight[m := 2 [m]]
+  end
+  derive e7:
+    evaluate weight[m := 2 [kg]] digits 0
+  end
+end
+
+theory NoUnits
+  dim L, T
+  var x : L
+  var t : T
+  law p: x = t*0
+  derive e8:
+    evaluate p[t := 2 [s]]
+  end
+end

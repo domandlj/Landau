@@ -1,0 +1,59 @@
+-- Systems of equations: `solve e1, e2 for x, y` gives the first unknown, x,
+-- with the others eliminated. List another unknown first to get it instead.
+
+theory ElasticCollision
+  dim M, L, T
+  var m1, m2 : M, positive
+  var v1, v2 : L/T                  -- velocities before
+  var u1, u2 : L/T                  -- and after
+
+  law momentum: m1*v1 + m2*v2 = m1*u1 + m2*u2
+  law energy:   m1*v1^2/2 + m2*v2^2/2 = m1*u1^2/2 + m2*u2^2/2
+
+  -- root 1 is u1 = v1, u2 = v2: the bodies never touched
+  derive first_after:               -- u1 = ((m1 - m2)*v1 + 2*m2*v2)/(m1 + m2)
+    solve momentum, energy for u1, u2, root 2
+  end
+  derive second_after:              -- u2 = (2*m1*v1 + (m2 - m1)*v2)/(m1 + m2)
+    solve momentum, energy for u2, u1, root 2
+  end
+end
+
+-- Two masses over a pulley: Newton's second law for each, with the same
+-- tension T and the same size of acceleration a.
+theory Atwood
+  dim M, L, T
+  dim Force = M*L/T^2
+  var m1, m2 : M, positive
+  var g : L/T^2, positive
+  var a : L/T^2
+  var Tn : Force                    -- tension
+
+  law heavy: m1*a = m1*g - Tn       -- m1 goes down
+  law light: m2*a = Tn - m2*g       -- m2 goes up
+
+  derive acceleration:              -- a = (m1 - m2)*g/(m1 + m2)
+    solve heavy, light for a, Tn
+  end
+  derive tension:                   -- Tn = 2*m1*m2*g/(m1 + m2)
+    solve heavy, light for Tn, a
+  end
+end
+
+-- Kirchhoff's rules for two batteries and three resistors.
+theory Kirchhoff
+  dim M, L, T, I
+  dim Volt = M*L^2/(T^3*I)
+  dim Ohm  = M*L^2/(T^3*I^2)
+  var ε1, ε2 : Volt
+  var R1, R2, R3 : Ohm, positive
+  var I1, I2, I3 : I
+
+  law junction: I1 + I2 = I3        -- currents into the node
+  law left:     ε1 = I1*R1 + I3*R3  -- around each loop
+  law right:    ε2 = I2*R2 + I3*R3
+
+  derive shared_current:
+    solve junction, left, right for I3, I1, I2
+  end
+end

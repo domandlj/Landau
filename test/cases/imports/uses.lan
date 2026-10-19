@@ -1,0 +1,21 @@
+theory Uses
+  import Maxwell
+  derive again:
+    solve gauss for ρ
+  end
+end
+
+theory UsesAtwood
+  import Atwood
+  derive a2:
+    solve heavy, light for a, Tn
+  end
+end
+
+theory UsesKin
+  import Kinematics from projectile
+end
+
+theory WholeFile
+  import systems
+end

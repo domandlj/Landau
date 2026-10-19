@@ -1,0 +1,3 @@
+theory Q
+  import nosuch
+end

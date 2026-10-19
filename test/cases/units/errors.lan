@@ -1,0 +1,19 @@
+theory A
+  dim L, T
+  dim V = L/T
+  unit m : L, s : T
+  unit ft = 0.3048*m
+  unit L2 : V
+  unit yd : L
+  unit T = 1000*s
+  var x : 1000*m
+  var y : ft^(1/2)
+  var z : furlong
+  unit sqm = m^(1/2)
+  var ok : ft/s
+end
+
+theory B
+  dim T
+  import SI
+end

@@ -1,0 +1,18 @@
+theory Spring3D
+  dim M, L, T
+  var r : L, position
+  var s : 1
+  var p(s) : L, vector
+  var F(r) : M*L/T^2, vector
+  var W : M*L^2/T^2
+  var k : M/T^2, positive
+  var a, b : L, positive
+  law work: W = integral(dot(F(p), diff(p, s)), s, 0, 1)
+  law field: F = -k*vec(r.x, r.y, r.z)
+  law path:  p = vec(a*cos(pi*s/2), b*sin(pi*s/2), 0)   -- quarter ellipse
+  derive along_ellipse:          -- k*(a^2 - b^2)/2: depends only on the end points
+    w1 := subst field into work
+    w2 := subst path into w1
+    simplify w2
+  end
+end

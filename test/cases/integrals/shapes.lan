@@ -1,0 +1,52 @@
+theory Geo
+  dim M, L, T
+  var r : L, position
+  var s, u, w : 1
+  var ρ : L
+  var θ, φ : 1
+  var a, R, h : L, positive
+  var m, k : M, positive
+  var g : L/T^2, positive
+  var v0 : L/T, positive
+  var ρ0 : M/L^3, positive
+  var W : M*L^2/T^2
+  var Len : L, positive
+  var Ar : L^2
+  var ϱ, z : L                      -- cylindrical radius and height
+  var Φ : L^3/T
+  var V : L^3
+  var Mass : M
+  var F(r) : M*L/T^2, vector
+  var Γ : L^2/T
+
+  law work_ramp:  W = line(vec(0, 0, -m*g), vec(h*s, 0, h*s), s, 0, 1)
+  law circumf:    Len = line(1, vec(a*cos(s), a*sin(s), 0), s, 0, 2*pi)
+  law flux_disk:  Φ = surface(vec(0, 0, v0), vec(ϱ*cos(w), ϱ*sin(w), 0), ϱ, 0, R, w, 0, 2*pi)
+  law sphere_area: Ar = surface(1, vec(R*sin(u)*cos(w), R*sin(u)*sin(w), R*cos(u)), u, 0, pi, w, 0, 2*pi)
+  law ball:       V = volume(1, vec(ρ*sin(θ)*cos(φ), ρ*sin(θ)*sin(φ), ρ*cos(θ)), ρ, 0, R, θ, 0, pi, φ, 0, 2*pi)
+  law cone_mass:  Mass = volume(ρ0, vec(ϱ*cos(w), ϱ*sin(w), z), ϱ, 0, R*(1 - z/h), w, 0, 2*pi, z, 0, h)
+  -- circulation of a rotating flow around a circle: ∮ v·dr = 2πa²ω... with ω = v0/a
+  law circulation: Γ = loop(vec(-r.y, r.x, 0)*v0/a, vec(a*cos(s), a*sin(s), 0), s, 0, 2*pi)
+
+  derive d1:
+    simplify work_ramp
+  end
+  derive d2:
+    simplify circumf
+  end
+  derive d3:
+    simplify flux_disk
+  end
+  derive d4:
+    simplify sphere_area
+  end
+  derive d5:
+    simplify ball
+  end
+  derive d6:
+    simplify cone_mass
+  end
+  derive d7:
+    simplify circulation
+  end
+end

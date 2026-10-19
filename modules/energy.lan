@@ -1,0 +1,25 @@
+-- Free fall from energy conservation.
+
+theory Mechanics
+  dim M, L, T
+  dim Energy = M*L^2/T^2
+
+  var m : M, positive
+  var v : L/T, positive
+  var h : L, positive
+  var g : L/T^2, positive
+  var E : Energy
+
+  def kinetic(m, v) = m*v^2/2
+  def potential(m, h) = m*g*h        -- uses the global g
+
+  law conservation: kinetic(m, v) = potential(m, h)
+
+  derive fall_speed:
+    solve conservation for v
+  end
+
+  derive fall_height:
+    solve conservation for h
+  end
+end

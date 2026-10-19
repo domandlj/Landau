@@ -1,0 +1,6 @@
+dim L, T
+var a : T/L
+var b : T*L^(-1)
+var c : T*L^-1
+var d : L^-1*T
+law same: a = b + c + d

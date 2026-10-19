@@ -1,0 +1,58 @@
+-- Work as an integral: along a line, and along a path through a force field.
+
+theory Work1D
+  dim M, L, T
+  dim Force = M*L/T^2
+  var x, x1, x2 : L
+  var F(x) : Force                 -- a force that depends on position
+  var W : M*L^2/T^2
+  var k : M/T^2, positive          -- spring constant
+
+  law work:  W = integral(F, x, x1, x2)
+  law hooke: F = -k*x
+
+  derive spring_work:              -- W = k*(x1^2 - x2^2)/2
+    w := subst hooke into work
+    simplify w
+  end
+end
+
+-- In space, work is the line integral W = ∫ F · dr along a path r = p(s).
+-- line(F, p, s, 0, 1) is that integral, ∫ F(p(s)) · dp/ds ds written out.
+
+theory WorkAlongPath
+  dim M, L, T
+  dim Force = M*L/T^2
+  var r : L, position
+  var s : 1                        -- path parameter
+  var p(s) : L, vector             -- the path
+  var F(r) : Force, vector         -- a force field
+  var W : M*L^2/T^2
+  var m, k : M, positive
+  var g : L/T^2, positive
+  var h, a, b : L, positive
+
+  law work: W = line(F, p, s, 0, 1)
+
+  law gravity: F = vec(0, 0, -m*g)
+  law ramp:    p = vec(h*s, 0, h*s)                       -- up a 45° ramp by h
+
+  derive lift:                     -- W = -m*g*h: only the height counts
+    w1 := subst gravity into work
+    w2 := subst ramp into w1
+    simplify w2
+  end
+end
+
+theory SpringField
+  import WorkAlongPath
+  var κ : M/T^2, positive          -- spring constant
+  law spring:  F = -κ*vec(r.x, r.y, r.z)
+  law ellipse: p = vec(a*cos(pi*s/2), b*sin(pi*s/2), 0)   -- a quarter ellipse
+
+  derive around:                   -- W = κ*(a^2 - b^2)/2: only the end points count
+    w1 := subst spring into work
+    w2 := subst ellipse into w1
+    simplify w2
+  end
+end

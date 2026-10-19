@@ -1,0 +1,4 @@
+theory A
+  import SI
+  unit ft = 0.3048*m, mi = 5280*ft, ly = 9.4607e15*m
+end

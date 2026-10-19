@@ -1,0 +1,9 @@
+dim M, L, T
+var t : T
+var v(t) : L/T, vector
+var m : M, positive
+var P(t) : M*L^2/T^3
+law power: P = diff(m*dot(v, v)/2, t)
+derive p:
+  simplify power
+end

@@ -1,0 +1,36 @@
+theory Fall
+  dim M, L, T
+  var t, T1 : T, positive
+  var x(t) : L
+  var v(t) : L/T
+  var g : L/T^2, positive
+  var x0 : L
+  var v0 : L/T
+  var ω : 1/T, positive
+  var W : L^2/T
+
+  law newton:  diff(diff(x, t), t) = -g
+  law spring:  diff(diff(x, t), t) = -ω^2*x
+  law velocity: v = diff(x, t)
+  law area:    W = integral(v0 - g*t, t, 0, T1)*v0
+
+  derive general:                 -- x = C1 + C2*t - g*t^2/2
+    solve newton for x
+  end
+  derive thrown:                  -- with initial conditions
+    solve newton for x with x(0) = x0, at(diff(x, t), t, 0) = v0
+  end
+  derive oscillator:
+    solve spring for x with x(0) = x0, at(diff(x, t), t, 0) = 0
+  end
+  derive area_eval:
+    simplify area
+  end
+  derive displacement:            -- integrating v = dx/dt from 0 to T1
+    i := integrate velocity by t from 0 to T1
+    simplify i
+  end
+  derive antiderivative:
+    simplify newton[x := integral(v0, t)]
+  end
+end

@@ -1,0 +1,30 @@
+dim L, T
+var t, T1 : T
+var x(t) : L
+var y : L
+var g : L/T^2
+law a: diff(diff(x, t), t) = -g
+law b: y = integral(x, t, 0, y)
+law c: y = x(0, 1)
+law d: y = x(y)
+law e: y = at(x, t, y)
+law f: y = integral(x, y)*0
+law ok: y = g*t^2
+derive e1:
+  solve ok for y with y = 0
+end
+derive e2:
+  ok[t := 3*T1]
+end
+derive e3:
+  a[t := 0]
+end
+derive e4:
+  apply atan2 to ok
+end
+derive e5:
+  subst a into ok
+end
+derive e6:
+  solve a for x with x(0) = g
+end

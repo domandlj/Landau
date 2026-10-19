@@ -1,0 +1,98 @@
+-- Maxwell's equations in SI units, with vector fields.
+
+theory Maxwell
+  dim M, L, T, I
+  dim Charge = I*T
+  dim Force  = M*L/T^2
+
+  var r  : L, position             -- grad, div, curl and lap differentiate by r
+  var t  : T
+  -- fields depend on position and time
+  var E(r, t) : M*L/(T^3*I), vector     -- electric field (V/m)
+  var B(r, t) : M/(T^2*I), vector       -- magnetic field (tesla)
+  var J(r, t) : I/L^2, vector           -- current density
+  var ρ(r, t) : Charge/L^3              -- charge density
+  var ε0 : T^4*I^2/(M*L^3), positive
+  var μ0 : M*L/(T^2*I^2), positive
+
+  law gauss:    div(E) = ρ/ε0
+  law gauss_b:  div(B) = 0
+  law faraday:  curl(E) = -diff(B, t)
+  law ampere:   curl(B) = μ0*J + μ0*ε0*diff(E, t)
+
+  -- The current needed to sustain given fields: solve a vector equation.
+  derive current:
+    solve ampere for J
+  end
+
+  -- Charge is conserved: take the divergence of Ampère's law.
+  derive continuity:                     -- 0 = μ0*(∂ρ/∂t + div(J))
+    d := apply div to ampere             -- div(curl(B)) = 0 on the left
+    g := subst gauss into d
+    simplify g
+  end
+
+  -- A vector identity, proved in components before it is used below.
+  law curl_curl: curl(curl(E)) = grad(div(E)) - lap(E)
+
+  derive curl_curl_holds:
+    e := expand curl_curl
+    simplify e
+  end
+
+  -- In empty space E obeys the wave equation, with speed 1/sqrt(μ0*ε0).
+  derive wave:                           -- lap(E) = μ0*ε0*∂²E/∂t²
+    c := apply curl to faraday
+    a := subst ampere[J := 0] into c
+    i := subst curl_curl into a
+    g := subst gauss[ρ := 0] into i
+    simplify g
+  end
+end
+
+theory Lorentz
+  import Maxwell
+  var q : Charge
+  var v : L/T, vector
+  var F : Force, vector
+
+  law lorentz:  F = q*(E + cross(v, B))
+
+  -- A charge at rest feels only the electric field.
+  derive at_rest:
+    f := lorentz[v := 0]
+    simplify f
+  end
+end
+
+-- Light: a plane wave travelling along x, with E along y and B along z.
+-- Putting it into Faraday's and Ampère's laws in empty space fixes the
+-- amplitude of B and the wave's speed ω/k.
+
+theory Light
+  import Maxwell
+  var E0 : M*L/(T^3*I), positive       -- amplitudes
+  var B0 : M/(T^2*I), positive
+  var k  : 1/L, positive               -- wave number
+  var ω  : 1/T, positive               -- angular frequency
+  var c  : L/T, positive
+
+  def Ew() = vec(0, E0*cos(k*r.x - ω*t), 0)
+  def Bw() = vec(0, 0, B0*cos(k*r.x - ω*t))
+
+  law faraday_wave: curl(Ew()) = -diff(Bw(), t)
+  law ampere_wave:  curl(Bw()) = μ0*ε0*diff(Ew(), t)    -- no current
+  law wave_speed:   c = ω/k
+
+  derive speed_of_light:
+    f  := component z of faraday_wave      -- k*E0*sin(...) = ω*B0*sin(...)
+    b  := solve f for B0                   -- B0 = k*E0/ω
+    a  := component y of ampere_wave
+    a2 := subst b into a
+    -- roots 1 and 2 only hold where sin(k*r.x - ω*t) = 0, at particular
+    -- points and times; root 3 holds everywhere
+    w  := solve a2 for ω, root 3           -- ω = k/sqrt(μ0*ε0)
+    s  := subst w into wave_speed
+    simplify s                             -- c = 1/sqrt(μ0*ε0)
+  end
+end

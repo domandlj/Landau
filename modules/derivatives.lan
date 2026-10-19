@@ -1,0 +1,84 @@
+-- Derivatives in every notation: switch the header between dx/dt, ẋ and x′
+-- to see them change. Dots are for time derivatives only; partial
+-- derivatives are always ∂u/∂x.
+
+theory Oscillator
+  dim M, L, T
+  var t : T
+  var x(t) : L
+  var x0 : L
+  var m : M, positive
+  var k : M/T^2, positive
+  var b : M/T, positive
+  var ω : 1/T, positive
+  var F : M*L/T^2
+  var j : L/T^3
+
+  law damped: m*diff(diff(x, t), t) + b*diff(x, t) + k*x = F     -- m ẍ + b ẋ + k x = F
+  law jerk:   j = diff(diff(diff(x, t), t), t)                   -- third order: x⃛
+  law free:   diff(diff(x, t), t) = -ω^2*x
+
+  derive motion:                   -- x = x0 cos(ωt), released at rest
+    solve free for x with x(0) = x0, at(diff(x, t), t, 0) = 0
+  end
+
+  derive jolt:                     -- its jerk
+    s := subst motion into jerk
+    simplify s
+  end
+end
+
+-- A velocity vector and one of its components: ṙ, and ṙ_x.
+theory Orbit
+  dim L, T
+  var t : T
+  var r(t) : L, vector(3)
+  var v(t) : L/T, vector(3)
+  var R : L, positive
+  var ω : 1/T, positive
+
+  law velocity: v = diff(r, t)
+  law circle:   r = vec(R*cos(ω*t), R*sin(ω*t), 0)
+
+  derive vx:                       -- v_x = -Rω sin(ωt)
+    c := component x of velocity
+    s := subst circle into c
+    simplify s
+  end
+end
+
+-- A slope along x is not a time derivative: dots leave dy/dx alone, primes
+-- give y′.
+theory Curve
+  dim L
+  var x : L
+  var y(x) : L
+  var a : 1/L
+  var s : 1
+
+  law parabola: y = a*x^2
+  law slope:    s = diff(y, x)
+
+  derive steep:                    -- s = 2ax
+    q := subst parabola into slope
+    simplify q
+  end
+end
+
+-- u depends on x and t, so these are partial derivatives in every notation.
+theory Wave
+  dim L, T
+  var x : L
+  var t : T
+  var c : L/T, positive
+  var A : L
+  var κ : 1/L
+  var u(x, t) : L
+
+  law wave: diff(diff(u, t), t) = c^2*diff(diff(u, x), x)
+
+  derive travelling:               -- A sin(κ(x - ct)) solves it: 0 = 0
+    w := wave[u := A*sin(κ*(x - c*t))]
+    simplify w
+  end
+end

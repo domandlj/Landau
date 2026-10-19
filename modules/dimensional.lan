@@ -1,0 +1,74 @@
+-- Dimensional analysis (Buckingham π): what a result can depend on, found
+-- from the dimensions alone. `groups name: X from a, b, c` lists the
+-- dimensionless groups Π1, Π2, ... and writes X as a product of the others
+-- times an unknown function Φ of the remaining groups (or a constant C).
+
+-- The period of a pendulum cannot depend on its mass: nothing else has M to
+-- cancel it. The exact answer, P = 2π sqrt(ℓ/g) for small swings, has this form.
+theory Pendulum
+  dim M, L, T
+  var P : T                  -- the period
+  var ℓ : L                  -- the length
+  var g : L/T^2
+  var m : M                  -- the mass
+  var θ0 : 1                 -- the amplitude
+
+  groups period: P from ℓ, g, m, θ0
+end
+
+-- The drag on a sphere: F = ρ v² D² Φ(Re), with Re = ρvD/μ the Reynolds number.
+theory Drag
+  dim M, L, T
+  var F : M*L/T^2            -- the drag force
+  var ρ : M/L^3              -- the fluid's density
+  var v : L/T                -- the speed
+  var D : L                  -- the diameter
+  var μ : M/(L*T)            -- the fluid's viscosity
+
+  groups drag: F from ρ, v, D, μ
+end
+
+-- G. I. Taylor's blast wave (1950): the radius of a fireball after a time t,
+-- from the energy released and the density of air. With one group there is no
+-- unknown function, only a constant: R = C (E t²/ρ)^(1/5). Measuring R(t) in
+-- photographs gave the energy of the first atomic bomb.
+theory Blast
+  dim M, L, T
+  var R : L
+  var E : M*L^2/T^2
+  var ρ : M/L^3
+  var t : T
+
+  groups radius: R from E, ρ, t
+end
+
+-- Kepler's third law, up to a constant (it is 2π): P = C sqrt(r³/(G M)).
+theory Orbit
+  import Constants
+  var P : s
+  var r : m
+  var M : kg
+
+  groups kepler: P from r, G, M
+end
+
+-- Waves on deep water: the speed depends on the wavelength, not the depth or
+-- the density, c = C sqrt(g λ). (ρ cannot appear: nothing cancels its kg.)
+theory Waves
+  import Constants
+  var c_w : m/s
+  var λ : m
+  var ρ : kg/m^3
+
+  groups deep: c_w from g, λ, ρ
+end
+
+-- Planck units: the only length made from ħ, G and c. With C = 1 it is the
+-- Planck length.
+theory Planck
+  import Constants
+  var ℓ_P : m
+
+  groups length: ℓ_P from ħ, G, c
+  compute sqrt(ħ*G/c^3) in m digits 4
+end

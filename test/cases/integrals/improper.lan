@@ -1,0 +1,21 @@
+dim L, T
+var x : L
+var t : T
+var a : L, positive
+var τ : T, positive
+var A : L
+var B : 1
+var D : L
+law gauss: A = integral(exp(-x^2/a^2), x, -inf, inf)
+law decay: B = integral(exp(-t/τ), t, 0, inf)/τ
+law diverge: D = integral(1, x, 0, inf)
+law limitdim: x = inf
+derive g:
+  simplify gauss
+end
+derive d:
+  simplify decay
+end
+derive v:
+  simplify diverge
+end

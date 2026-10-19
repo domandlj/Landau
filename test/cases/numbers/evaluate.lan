@@ -1,0 +1,47 @@
+theory Numbers
+  import SI
+  const g = 9.81 [m/s^2]
+  var m : kg, positive
+  var W : N
+  var v : km/h
+  var d : km, positive
+  var t : min, positive
+  var x : m
+  var v0 : m/s
+  var T1 : s, positive
+  law weight: W = m*g
+  law speed:  v = d/t
+  law fall:   x = v0*T1 - g*T1^2/2
+
+  derive w:
+    a := weight[m := 2 [kg]]
+    evaluate a
+  end
+  derive w_kN:
+    a := weight[m := 2 [kg]]
+    evaluate a in kN digits 3
+  end
+  derive trip:
+    a := speed[d := 12 [km], t := 15 [min]]
+    evaluate a
+  end
+  derive trip_ms:
+    a := speed[d := 12 [km], t := 15 [min]]
+    evaluate a in m/s
+  end
+  derive drop:
+    a := fall[v0 := 0 [m/s], T1 := 2 [s]]
+    evaluate a
+  end
+  derive check_ok:
+    evaluate weight[W := 19.62 [N], m := 2 [kg]]
+  end
+  derive check_rounded:
+    evaluate weight[W := 19.6 [N], m := 2 [kg]] digits 3
+  end
+  derive time_up:
+    s := solve fall for T1, root 2
+    a := s[v0 := 20 [m/s], x := 0 [m]]
+    evaluate a digits 3
+  end
+end

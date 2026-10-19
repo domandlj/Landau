@@ -1,0 +1,3 @@
+theory ZZ
+  import self_import
+end
