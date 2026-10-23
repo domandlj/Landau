@@ -65,6 +65,28 @@ theory Curve
   end
 end
 
+-- The chain rule: a bead slides along a wire of shape y(x), and its position
+-- along the wire changes with time, x(t). So y depends on t through x.
+theory Bead
+  dim L, T
+  var t : T
+  var x(t) : L
+  var y(x) : L
+  var vy : L/T
+  var ay : L/T^2
+
+  law climb:  vy = diff(y, t)
+  law rise:   ay = diff(diff(y, t), t)
+
+  derive chain:                    -- ẏ = y'(x) ẋ
+    simplify climb
+  end
+
+  derive chain2:                   -- ÿ = y''(x) ẋ² + y'(x) ẍ
+    simplify rise
+  end
+end
+
 -- u depends on x and t, so these are partial derivatives in every notation.
 theory Wave
   dim L, T

@@ -1,0 +1,41 @@
+-- Degrees are exact (pi/180 rad), units may be scaled by pi, and a value in
+-- rad/s cannot be shown in Hz (or back) without the 2π.
+theory Angles
+  import SI
+  unit rev = 2*pi*rad, arcmin = deg/60
+  var ω : rad/s
+  var f : Hz
+  law spin: ω = 2*pi*f
+  compute sin(30 [deg])
+  compute 90 [deg] in rad
+  compute pi/4 in deg
+  compute 1 [rad] in deg digits 8
+  compute 1 [arcmin] in deg digits 4
+  compute 33 [rev/min] in rad/s
+  compute 360 [deg/s] in rad/s
+  compute 3 [rad/s] in 1/s
+  compute 3 [rad/s]/(2*pi) in Hz
+  compute th = 45 [deg]
+  compute cos(th)^2
+  derive w:
+    s := spin[f := 50 [Hz]]
+    evaluate s in rad/s
+  end
+end
+
+theory ToHz
+  import SI
+  compute 3 [rad/s] in Hz
+end
+
+theory FromHz
+  import SI
+  compute 50 [Hz] in rad/s
+end
+
+theory Degrees
+  import SI
+  var ω : deg/s
+  const ω0 = 10 [deg/s]
+  compute ω0 in Hz
+end

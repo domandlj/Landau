@@ -1,0 +1,90 @@
+-- Sums and integers. `sum(f, k, a, b)` adds f for k = a, a+1, ..., b (b may
+-- be inf); k is the sum's own counter. `var n : 1, integer` declares a whole
+-- number, so that sin(n*pi) = 0 and cos(n*pi) = (-1)^n.
+
+-- The sums behind blackbody radiation: Σ 1/k⁴ = π⁴/90 gives the
+-- Stefan-Boltzmann constant.
+theory Zeta
+  var Z2, Z4 : 1
+  law basel:  Z2 = sum(1/k^2, k, 1, inf)
+  law fourth: Z4 = sum(1/k^4, k, 1, inf)
+
+  derive two:                      -- π²/6 (Euler, 1734)
+    simplify basel
+  end
+
+  derive four:                     -- π⁴/90
+    simplify fourth
+  end
+end
+
+-- A quantum oscillator in contact with a heat bath: its levels are
+-- E_k = ħω(k + 1/2), and the partition function sums their Boltzmann factors.
+theory Oscillator
+  dim M, L, T
+  var ħ : M*L^2/T, positive
+  var ω : 1/T, positive
+  var β : T^2/(M*L^2), positive          -- 1/(k_B T)
+  var Z(β) : 1
+  var U : M*L^2/T^2
+
+  law partition: Z = sum(exp(-β*ħ*ω*(k + 1/2)), k, 0, inf)
+  law mean:      U = -diff(log(Z), β)      -- the mean energy
+
+  derive closed:                   -- Z = 1/(2 sinh(βħω/2))
+    simplify partition
+  end
+
+  derive energy:                   -- U = (ħω/2) coth(βħω/2)
+    s := subst closed into mean
+    simplify s
+  end
+end
+
+-- A particle in a box of width a: the wave must vanish at both walls, so
+-- k = nπ/a with n = 1, 2, 3, ..., and the energy comes in levels.
+theory Box
+  dim M, L, T
+  var n : 1, integer, positive
+  var m : M, positive
+  var a : L, positive
+  var x : L
+  var ħ : M*L^2/T
+  var k : 1/L
+  var E : M*L^2/T^2
+  var ψa, N : 1
+
+  law wall:   ψa = sin(n*pi)                                 -- the wave at x = a
+  law norm:   N = integral(sin(n*pi*x/a)^2, x, 0, a)/a
+  law wave:   k = n*pi/a
+  law energy: E = ħ^2*k^2/(2*m)
+
+  derive vanishes:                 -- 0, because n is a whole number
+    simplify wall
+  end
+
+  derive half:                     -- the average of sin² over the box is 1/2
+    simplify norm
+  end
+
+  derive levels:                   -- E_n = π²ħ²n²/(2ma²)
+    s := subst wave into energy
+    simplify s
+  end
+end
+
+-- A square wave (1 for 0 < x < π, -1 for -π < x < 0) as a Fourier series:
+-- its sine coefficients are b_n = (2/π)∫₀^π sin(nx) dx.
+theory Square
+  var n : 1, integer, positive
+  var x, b : 1
+
+  law coefficient: b = 2/pi*integral(sin(n*x), x, 0, pi)
+
+  derive bn:                       -- 2(1 - (-1)^n)/(nπ): 4/(nπ) for odd n, 0 for even n
+    simplify coefficient
+  end
+
+  -- the series at x = π/2, where the wave is 1, with 200 terms
+  compute sum(4/pi*sin((2*k - 1)*pi/2)/(2*k - 1), k, 1, 200) digits 4
+end

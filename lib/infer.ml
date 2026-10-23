@@ -46,6 +46,7 @@ type env = {
   position : Dim.t option; (* the dimension grad, div, curl and lap differentiate by *)
   deps : string -> string list; (* x(t) depends on t: x(0) evaluates it *)
   unit_dim : dexpr -> Dim.t; (* the dimension of a unit, for quantities like 9.81 [m/s^2] *)
+  matrix_size : expr -> int option; (* n for an n×n matrix: det(A) has n times A's dimension *)
 }
 
 let instantiate st sc =
@@ -86,7 +87,7 @@ let dimensionless_fns =
 
 (* Every built-in function; definitions cannot reuse these names. *)
 let builtins =
-  dimensionless_fns @ [ "sqrt"; "abs"; "conj"; "atan2"; "dot"; "cross"; "norm"; "grad"; "div"; "curl"; "lap"; "diff"; "vec"; "comp"; "integral"; "at"; "line"; "loop"; "surface"; "volume" ]
+  dimensionless_fns @ [ "sqrt"; "abs"; "conj"; "atan2"; "dot"; "cross"; "norm"; "grad"; "div"; "curl"; "lap"; "diff"; "vec"; "comp"; "integral"; "at"; "line"; "loop"; "surface"; "volume"; "sum"; "mat"; "identity"; "det"; "trace"; "inv"; "transpose"; "entry" ]
 
 let show = Pretty.expr
 let ds = Dim.to_string
@@ -132,6 +133,18 @@ let rec infer st env e =
               sprintf "`%s` is raised to the symbolic power `%s`, so it must be dimensionless, but it is [%s]"
                 (show a) (show b) (ds da));
           Dim.one)
+  | Call ("sum", [ f; Var k; a; b ]) ->
+      (* sum(f, k, a, b): k counts, so it and its bounds are dimensionless;
+         the sum has the dimension of its terms *)
+      List.iter
+        (fun x ->
+          unify st (infer st env x) Dim.one (fun d _ ->
+              sprintf "the bound `%s` of `sum` must be dimensionless, but it is [%s]" (show x) (ds d)))
+        [ a; b ];
+      infer st { env with locals = (k, Dim.one) :: env.locals } f
+  | Call ("sum", [ _; i; _; _ ]) ->
+      raise (Error (sprintf "`sum` counts with a name, as in sum(1/n^2, n, 1, inf), but got `%s`" (show i)))
+  | Call ("sum", args) -> raise (Error (sprintf "`sum` takes 4 arguments (f, n, a, b), but got %d" (List.length args)))
   | Call (f, args) -> infer_call st env f args
 
 and infer_call st env f args =
@@ -251,6 +264,31 @@ and infer_call st env f args =
                   (show a) (ds_ d) (show b) (ds_ db)))
           rest ds;
         apply st d
+    | "mat", a :: rest, d :: ds ->
+        (* all entries of a matrix share one dimension, as a vector's components do *)
+        List.iter2
+          (fun b db ->
+            unify st d db (fun d db ->
+                sprintf "the rows of a matrix must have the same dimension, but `%s` is [%s] and `%s` is [%s]" (show a)
+                  (ds_ d) (show b) (ds_ db)))
+          rest ds;
+        apply st d
+    | "identity", _, _ ->
+        arity 1;
+        Dim.one
+    | "det", _, _ -> (
+        arity 1;
+        match env.matrix_size (List.hd args) with Some n -> Dim.scale (Q.of_int n) (List.hd dims) | None -> List.hd dims)
+    | ("trace" | "transpose"), _, _ ->
+        arity 1;
+        List.hd dims
+    | "inv", _, _ ->
+        arity 1;
+        Dim.scale Q.minus_one (List.hd dims)
+    | "entry", _, _ ->
+        arity 3;
+        List.iter (fun d -> unify st d Dim.one (fun d _ -> sprintf "the row and column of `entry` are numbers, but one is [%s]" (ds_ d))) (List.tl dims);
+        List.hd dims
     | _ -> (
         match env.scheme_of f with
         | None -> raise (Error (sprintf "unknown function `%s`" f))

@@ -35,8 +35,9 @@ derivation step. Set `LANDAU_PYTHON` to use another Python.
 `web/` is a React + TypeScript app (Vite): an editor with Landau highlighting
 and inline errors next to the results, with laws rendered as math (KaTeX),
 dimension badges and expandable derivations. It checks as you type, or on
-Ctrl+Enter. Switches in the header choose how dimensions are written (L/T or
-L·T⁻¹, dimensions or units) and derivatives: dx/dt, Newton's dots ẋ, ẍ (for
+Ctrl+Enter. The ⚙ settings in the header choose the theme (dark by default or
+light), how dimensions are written (L/T or L·T⁻¹, dimensions or units) and
+derivatives: dx/dt, Newton's dots ẋ, ẍ (for
 derivatives by a variable of dimension T; others stay dx/dy) or primes x′, x″.
 Partial derivatives are always ∂u/∂x. Needs Node 18+:
 
@@ -144,10 +145,12 @@ declared with `var x(t)`: a variable depends only on what it lists, so
 `diff(x0 + v0*t, t)` is `v0`. A derivative of something that depends on
 nothing in it, like `diff(B, t)` for an undeclared `B`, or `div(B)` when `B`
 does not depend on the position, is reported as an error rather than taken
-as 0. Variables may depend only on independent variables (the position, `t`).
+as 0. A variable may depend on another dependent one: with `var θ(t)` and
+`var h(θ)`, `diff(h, t)` is `diff(h, θ)*diff(θ, t)` (the chain rule), and
+putting `θ := ω*t` into a law makes h the value `h(ω*t)`.
 
 Units: `import SI` brings the SI units (kg m s A K mol cd; N J W Pa C V Ω F S
-Wb T H Hz Bq Gy Sv rad sr; g km cm mm nm min h ms kJ eV atm bar), and a
+Wb T H Hz Bq Gy Sv rad sr deg; g km cm mm nm min h ms kJ eV atm bar), and a
 variable can be declared in units: `var F : N`, `var v : km/h`. Checking stays
 dimensional; units are for reading, and the web app can show results in
 dimensions or in units. SI's dimensions are named `Mass`, `Length`, `Time`,
@@ -160,6 +163,17 @@ unit s : Time                    -- a base unit: results are shown in these
 unit N = kg*m/s^2                -- a named unit, used when it is shorter
 unit ft = 0.3048*m               -- a scaled unit; the factor is kept for numbers
 ```
+
+Angles are dimensionless, as in the SI: `rad` is 1 and `deg` is exactly
+`pi/180*rad` (a unit's factor may contain `pi`, as in `unit rev = 2*pi*rad`).
+`sin(30 [deg])` is 1/2, and a lone angle keeps its unit: `compute th = 45 [deg]`
+shows 45 deg. A variable declared in degrees needs its unit when given a
+value, `θ := 30 [deg]`: a bare `θ := 30` (or `θ(0 [s]) = 30` in `simulate`)
+is an error, since it would be read as 30 rad. Because a radian and a cycle are both the number 1, the dimension
+check cannot tell rad/s from Hz, though 1 Hz is 2π rad/s; converting a value
+given in one into the other (`compute 3 [rad/s] in Hz`) is therefore an error
+that asks for the 2π. Only such direct conversions are caught: a law like
+`ω = f` still checks.
 
 Numbers: a quantity is a number with a unit in brackets, `2 [kg]`,
 `9.81 [m/s^2]`, `1.6e-19 [C]`. `const g = 9.81 [m/s^2]` declares a variable
@@ -284,6 +298,30 @@ function, `x(t)`, that the equation differentiates. Initial conditions follow
 `with`. The constants of a general solution (C1, C2, ...) become variables of
 the theory, and their dimensions are inferred: in `x = C1 + C2*t - g*t^2/2`,
 C1 is [L] and C2 is [L/T].
+
+Matrices: `var K : M/T^2, matrix(2)` is a square matrix whose entries all
+have one dimension; `mat(vec(a, b), vec(c, d))` writes one row by row, and
+`identity(n)` is the identity. Shapes are checked (a 2x2 matrix times a
+3-vector is an error), products keep their order, `det` of an n x n matrix has
+n times its dimension and `inv` the inverse one; `trace`, `transpose` and
+`entry(A, i, j)` complete the set. SymPy's symbols commute, so Landau writes
+every product with a matrix out entry by entry before SymPy sees it, and asks
+SymPy only for determinants, inverses and eigenvalues, all symbolic.
+`eigen name: A` lists A's eigenvalues and eigenvectors; `eigen name: K, M`
+solves K v = λ M v (normal modes, λ = ω²), with λ's dimension that of K over M.
+A matrix variable stands for the law defining it. `modules/matrices.lan` has
+coupled oscillators, an inertia tensor and a spin in a magnetic field.
+
+Sums and integers: `sum(f, k, a, b)` adds f for k = a, ..., b (`b` may be
+`inf`). The counter k belongs to the sum, needs no `var`, and is a whole
+number; it and the bounds are dimensionless, and the sum has f's dimension.
+`simplify` closes sums SymPy can do (Σ1/k² = π²/6, geometric series, including
+exponential ones like a partition function Σe^(−βħω(k+1/2))); one with no closed
+form, or whose closed form splits into cases Landau cannot decide (r = 1 or
+not), stays a sum, and `compute` evaluates it numerically. `var n : 1,
+integer, positive` declares a count, so that sin(nπ) = 0 and cos(nπ) = (−1)ⁿ:
+the particle in a box and Fourier coefficients come out right.
+`modules/series.lan` has these.
 
 Dimensional analysis (Buckingham π): `groups name: P, ℓ, g, m, θ0` lists the
 dimensionless products of the variables, one per variable beyond the number of

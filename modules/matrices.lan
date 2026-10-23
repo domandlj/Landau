@@ -1,0 +1,80 @@
+-- Matrices: `var K : M/T^2, matrix(2)` is a 2x2 matrix whose entries are all
+-- [M/T^2]; `mat(vec(a, b), vec(c, d))` writes one row by row. Products keep
+-- their order (A*B is not B*A), det(A) has n times A's dimension, and
+-- `eigen name: K, M` solves K v = λ M v symbolically.
+
+-- Two equal masses between walls, each held by a spring k and joined by a
+-- spring κ. Newton's law is M ẍ = -K x; a mode x = v cos(ωt) needs
+-- K v = ω² M v, so det(K - ω² M) = 0.
+theory Coupled
+  dim M, L, T
+  var m : M, positive
+  var k, κ : M/T^2, positive
+  var ω : 1/T, positive
+  var K : M/T^2, matrix(2)
+  var Mm : M, matrix(2)
+  var x : L, vector(2)
+  var F : M*L/T^2, vector(2)
+
+  law stiffness: K = mat(vec(k + κ, -κ), vec(-κ, k + κ))
+  law mass:      Mm = mat(vec(m, 0), vec(0, m))
+  law springs:   F = -K*x
+  law modes:     det(K - ω^2*Mm) = 0
+
+  derive forces:                   -- each mass feels its own spring and the coupling
+    s := subst stiffness into springs
+    simplify s
+  end
+
+  derive characteristic:           -- (k - mω²)(k + 2κ - mω²) = 0
+    a := subst stiffness into modes
+    b := subst mass into a
+    simplify b
+  end
+
+  -- the frequencies (ω² = k/m and (k + 2κ)/m) with the shapes of the modes:
+  -- both masses together, v = (1, 1), and against each other, v = (1, -1)
+  eigen normal: K, Mm
+end
+
+-- A rigid body's inertia tensor. Its eigenvalues are the principal moments
+-- and its eigenvectors the axes about which it spins without wobbling.
+theory Inertia
+  dim M, L, T
+  var A, B, C : M*L^2, positive
+  var I : M*L^2, matrix(3)
+  var w : 1/T, vector(3)
+  var Lw : M*L^2/T, vector(3)
+
+  law tensor:   I = mat(vec(A, -B, 0), vec(-B, A, 0), vec(0, 0, C))
+  law momentum: Lw = I*w
+
+  derive spin:                     -- L is not parallel to ω unless ω is along an axis
+    s := subst tensor into momentum
+    simplify s
+  end
+
+  eigen principal: I               -- A - B, A + B and C, about (1, 1, 0), (1, -1, 0), (0, 0, 1)
+end
+
+-- A spin-1/2 in a magnetic field along z, with a field along x that mixes
+-- the two states. H = (ħ/2)(ω σz + Ω σx); its levels are ±(ħ/2)sqrt(ω² + Ω²).
+theory Spin
+  dim M, L, T
+  var ħ : M*L^2/T, positive
+  var ω, Ω : 1/T, positive
+  var σx, σz : 1, matrix(2)
+  var H : M*L^2/T^2, matrix(2)
+
+  law pauli_x: σx = mat(vec(0, 1), vec(1, 0))
+  law pauli_z: σz = mat(vec(1, 0), vec(0, -1))
+  law hamiltonian: H = ħ/2*(ω*σz + Ω*σx)
+
+  derive written:
+    a := subst pauli_x into hamiltonian
+    b := subst pauli_z into a
+    simplify b
+  end
+
+  eigen levels: H
+end

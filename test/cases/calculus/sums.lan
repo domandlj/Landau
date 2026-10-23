@@ -1,0 +1,68 @@
+-- Sums: closed forms, sums left as they are, the counter being the sum's own,
+-- and the errors.
+theory Sums
+  dim L
+  var S, x : L
+  var r, N, A, B, C, D : 1
+  var k : L                        -- not the sums' k: each sum has its own
+  law gauss:     A = sum(k, k, 1, N)
+  law geometric: B = sum(r^k, k, 0, N)          -- r = 1 or not: left as it is
+  law zeta3:     C = sum(1/k^3, k, 1, inf)      -- ζ(3) has no closed form here
+  law lengths:   S = sum(x/k^2, k, 1, inf)      -- a sum of lengths is a length
+  law half:      D = sum(1/2^k, k, 1, inf)
+  derive g:
+    simplify gauss
+  end
+  derive geo:
+    simplify geometric
+  end
+  derive z:
+    simplify zeta3
+  end
+  derive l:
+    simplify lengths
+  end
+  derive h:
+    simplify half
+  end
+  derive renamed:                  -- replacing k outside leaves the sum alone
+    s := gauss[k := x]
+  end
+  compute sum(1/k^3, k, 1, inf) digits 8
+  compute sum(1/(k*(k + 1)), k, 1, 100)
+end
+
+theory Errors
+  dim L
+  var S, x : L
+  law bound:   S = sum(x, k, 1, x)
+  law counter: S = sum(x, 2*k, 1, 3)
+  law arity:   S = sum(x, k, 1)
+  law dims:    S = sum(1, k, 1, 3)
+end
+
+-- integer: a dimensionless count, known to SymPy
+theory Integers
+  var n : 1, integer, positive
+  var m : 1, integer
+  var A, B, C : 1
+  law s: A = sin(n*pi)
+  law c: B = cos(m*pi)
+  law q: C = sin(m*pi)
+  derive zero:
+    simplify s
+  end
+  derive sign:
+    simplify c
+  end
+  derive also_zero:
+    simplify q
+  end
+end
+
+theory BadIntegers
+  dim L
+  var q : L, integer
+  var v : 1, integer, vector(3)
+  var z : 1, integer, complex
+end

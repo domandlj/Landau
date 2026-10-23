@@ -1,4 +1,4 @@
-(* Shapes: every expression is a scalar or an n-vector.
+(* Shapes: every expression is a scalar, an n-vector or an n×n matrix.
 
    This is checked separately from dimensions, because the two never
    interact: dot(a, b) and cross(a, b) have the dimension of a*b whatever
@@ -7,15 +7,15 @@
 open Syntax
 open Printf
 
-type t = Scalar | Vector of int
+type t = Scalar | Vector of int | Matrix of int
 
 (* [Zero] is the shape of 0 and its multiples: it fits anywhere. *)
-type s = S | V of int | Zero
+type s = S | V of int | M of int | Zero
 
-let to_string = function Scalar -> "scalar" | Vector n -> sprintf "%d-vector" n
-let of_s = function V n -> Vector n | S | Zero -> Scalar
-let to_s = function Vector n -> V n | Scalar -> S
-let s_name = function V n -> sprintf "%d-vector" n | S -> "scalar" | Zero -> "zero"
+let to_string = function Scalar -> "scalar" | Vector n -> sprintf "%d-vector" n | Matrix n -> sprintf "%d×%d-matrix" n n
+let of_s = function V n -> Vector n | M n -> Matrix n | S | Zero -> Scalar
+let to_s = function Vector n -> V n | Matrix n -> M n | Scalar -> S
+let s_name = function V n -> sprintf "%d-vector" n | M n -> sprintf "%d×%d matrix" n n | S -> "scalar" | Zero -> "zero"
 
 (* The shapes a definition was found to accept, for display. *)
 type table = (t list * t) list
@@ -56,17 +56,29 @@ let rec infer env e =
   | Mul (a, b) -> (
       match (infer env a, infer env b) with
       | V _, V _ -> fail "cannot multiply two vectors `%s` and `%s`: use dot(...) or cross(...)" (show a) (show b)
+      | V _, M _ -> fail "a vector times a matrix, `%s*%s`, is not defined here: write the matrix first, `%s*%s`" (show a) (show b) (show b) (show a)
+      | M n, V m when n <> m -> fail "cannot multiply the %d×%d matrix `%s` by the %d-vector `%s`" n n (show a) m (show b)
+      | M n, M m when n <> m -> fail "cannot multiply the %d×%d matrix `%s` by the %d×%d matrix `%s`" n n (show a) m m (show b)
       | Zero, _ | _, Zero -> Zero
+      | M _, (V _ as v) -> v
+      | (M _ as m), _ | _, (M _ as m) -> m
       | (V _ as v), _ | _, (V _ as v) -> v
       | S, S -> S)
   | Div (a, b) ->
-      (match infer env b with V _ -> fail "cannot divide by the vector `%s`" (show b) | _ -> ());
+      (match infer env b with
+      | V _ -> fail "cannot divide by the vector `%s`" (show b)
+      | M _ -> fail "cannot divide by the matrix `%s`: multiply by inv(%s)" (show b) (show b)
+      | _ -> ());
       infer env a
   | Pow (a, b) -> (
-      (match infer env b with V _ -> fail "the exponent `%s` is a vector" (show b) | _ -> ());
+      (match infer env b with V _ | M _ -> fail "the exponent `%s` is not a number" (show b) | _ -> ());
       match infer env a with
       | V _ -> fail "the vector `%s` cannot be raised to a power: use dot(%s, %s) or norm(%s)^k" (show a) (show a) (show a) (show a)
+      | M _ -> fail "write powers of the matrix `%s` as products, `%s*%s`" (show a) (show a) (show a)
       | s -> s)
+  | Call ("sum", [ f; Var k; a; b ]) ->
+      List.iter (fun x -> if infer env x <> S && infer env x <> Zero then fail "the bounds of `sum` are numbers, but `%s` is a vector" (show x)) [ a; b ];
+      infer { env with locals = (k, S) :: env.locals } f
   | Call (f, args) -> infer_call env f args
 
 and infer_call env f args =
@@ -76,11 +88,18 @@ and infer_call env f args =
     | V _ ->
         fail "`%s` needs a scalar, but `%s` is a vector%s" f (show a)
           (if f = "abs" then sprintf " (use norm(%s))" (show a) else "")
+    | M _ -> fail "`%s` needs a scalar, but `%s` is a matrix" f (show a)
     | _ -> ()
+  in
+  let square a s =
+    match s with
+    | M n -> n
+    | _ -> fail "`%s` needs a square matrix, but `%s` is a %s" f (show a) (s_name s)
   in
   let vector ?size a s =
     match (s, size) with
     | S, _ -> fail "`%s` needs a vector, but `%s` is a scalar" f (show a)
+    | M _, _ -> fail "`%s` needs a vector, but `%s` is a matrix" f (show a)
     | V n, Some m when n <> m -> fail "`%s` needs a %d-vector, but `%s` is a %d-vector" f m (show a) n
     | _ -> ()
   in
@@ -116,12 +135,34 @@ and infer_call env f args =
       if List.length args < 2 then fail "`vec` needs at least 2 components";
       List.iter2 scalar args shapes;
       V (List.length args)
+  | "mat", _, _ ->
+      (* mat(vec(a, b), vec(c, d)): its rows, as many as each has entries *)
+      let n = List.length args in
+      if n < 2 then fail "`mat` needs at least 2 rows, each a vec(...)";
+      List.iter2
+        (fun a s ->
+          match (a, s) with
+          | Call ("vec", _), V m when m = n -> ()
+          | Call ("vec", _), V m -> fail "a %d×%d matrix needs rows of %d entries, but `%s` has %d" n n n (show a) m
+          | _ -> fail "the rows of `mat` are written vec(...), but got `%s`" (show a))
+        args shapes;
+      M n
+  | "identity", [ Num q ], _ when Q.to_int q >= 2 && Q.equal q (Q.of_int (Q.to_int q)) -> M (Q.to_int q)
+  | "identity", _, _ -> fail "`identity(n)` takes the size n, a whole number of at least 2"
+  | ("det" | "trace"), [ a ], [ s ] -> ignore (square a s); S
+  | ("inv" | "transpose"), [ a ], [ s ] -> M (square a s)
+  | "entry", [ a; Num i; Num j ], [ s; _; _ ] ->
+      let n = square a s and i = Q.to_int i and j = Q.to_int j in
+      if i < 1 || i > n || j < 1 || j > n then fail "`%s` is %d×%d, so it has no entry (%d, %d)" (show a) n n i j;
+      S
+  | "entry", _, _ -> fail "`entry(A, i, j)` takes a matrix and two whole numbers"
   | "comp", [ a; Num q ], [ s; _ ] -> (
       let k = Q.to_int q in
       match s with
       | V n when k > n -> fail "`%s` is a %d-vector and has no component %s" (show a) n (component_name k)
       | V _ | Zero -> S
-      | S -> fail "`%s` is a scalar and has no components" (show a))
+      | S -> fail "`%s` is a scalar and has no components" (show a)
+      | M _ -> fail "`%s` is a matrix: take an entry with entry(%s, i, j)" (show a) (show a))
   | "integral", f :: x :: bounds, sf :: sx :: sbounds ->
       (match x with
       | Var _ | Call ("comp", [ Var _; _ ]) -> ()
@@ -169,7 +210,7 @@ and infer_call env f args =
         (List.combine args shapes) (env.var_deps f);
       Option.fold ~none:S ~some:to_s (env.var_shape f)
   | ( "dot" | "cross" | "norm" | "grad" | "div" | "curl" | "lap" | "diff" | "comp" | "integral" | "at" | "line" | "loop"
-    | "surface" | "volume" ), _, _ ->
+    | "surface" | "volume" | "det" | "trace" | "inv" | "transpose" ), _, _ ->
       S (* wrong arity: reported by dimension inference *)
   | _ -> (
       match env.def_body f with

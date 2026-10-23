@@ -141,10 +141,16 @@ let rec of_json back (j : Yojson.Safe.t) =
 let rec atomize e =
   match e with
   | Call ("comp", [ Var v; Num k ]) -> Var (v ^ "." ^ string_of_int (Q.to_int k))
+  | Call ("entry", [ Var v; Num i; Num j ]) -> Var (sprintf "%s.%d.%d" v (Q.to_int i) (Q.to_int j))
   | _ -> map_children atomize e
 
 let rec deatomize e =
   match e with
+  | Var x when (match String.split_on_char '.' x with [ _; i; j ] -> int_of_string_opt i <> None && int_of_string_opt j <> None | _ -> false) -> (
+      (* an entry of a matrix, A.1.2 *)
+      match String.split_on_char '.' x with
+      | [ a; i; j ] -> Call ("entry", [ Var a; Num (Q.of_string i); Num (Q.of_string j) ])
+      | _ -> e)
   | Var x when String.contains x '.' -> (
       let i = String.rindex x '.' in
       match component_index (String.sub x (i + 1) (String.length x - i - 1)) with
@@ -201,10 +207,10 @@ let symbols ~attrs_of ~deps_of exprs =
            let a = attrs_of x in
            let flag f = if List.mem f a then [ (f, `Bool true) ] else [] in
            (* vectors travel as plain symbols: only linear algebra and opaque operators touch them *)
-           let vector = List.exists (fun a -> String.starts_with ~prefix:"vector" a || String.starts_with ~prefix:"position" a) a in
+           let vector = List.exists (fun a -> List.exists (fun p -> String.starts_with ~prefix:p a) [ "vector"; "position"; "matrix" ]) a in
            let real = if List.mem "complex" a || vector then [] else [ ("real", `Bool true) ] in
            let deps = match deps_of x with [] -> [] | ds -> [ ("deps", `List (List.map (fun d -> `String (List.assoc d names)) ds)) ] in
-           (s, `Assoc (real @ flag "positive" @ flag "nonzero" @ deps)))
+           (s, `Assoc (real @ flag "positive" @ flag "nonzero" @ flag "integer" @ deps)))
          names)
   in
   let sym x = List.assoc x names in
@@ -280,6 +286,40 @@ let evaluate ~digits e =
   with
   | [ `String v ] -> v
   | _ -> fail "unexpected reply to evaluate"
+
+(* det, inv or eigen of square matrices given by their entries, rows first.
+   Returns SymPy's reply and how to read an expression in it back. *)
+let matrices ~attrs_of ~deps_of fn (ms : expr list list list) =
+  let hidden, reveal, attrs = hide_quantities (List.concat (List.concat ms)) in
+  let attrs_of = attrs attrs_of in
+  let hidden = List.map atomize hidden in
+  let sym, back, syms, is_var = symbols ~attrs_of ~deps_of hidden in
+  let rest = ref hidden in
+  let next () = match !rest with x :: r -> rest := r; to_json ~is_var sym x | [] -> assert false in
+  let json = `List (List.map (fun m -> `List (List.map (fun row -> `List (List.map (fun _ -> next ()) row)) m)) ms) in
+  let reply = request (`Assoc [ ("op", `String "matrix"); ("fn", `String fn); ("matrices", json); ("syms", syms) ]) in
+  (reply, fun j -> reveal (deatomize (of_json back j)))
+
+let det ~attrs_of ~deps_of rows =
+  match matrices ~attrs_of ~deps_of "det" [ rows ] with [ r ], back -> back r | _ -> fail "unexpected reply to det"
+
+let inv ~attrs_of ~deps_of rows =
+  match matrices ~attrs_of ~deps_of "inv" [ rows ] with
+  | [ `List rs ], back -> List.map (function `List xs -> List.map back xs | _ -> fail "unexpected reply to inv") rs
+  | _ -> fail "unexpected reply to inv"
+
+(* The eigenvalues of a (or of K v = λ M v, with b = M), each with its
+   multiplicity and eigenvectors. *)
+let eigen ~attrs_of ~deps_of a b =
+  match matrices ~attrs_of ~deps_of "eigen" (a :: Option.to_list b) with
+  | [ `List vs ], back ->
+      List.map
+        (function
+          | `List [ value; `Int mult; `List vectors ] ->
+              (back value, mult, List.map (function `List xs -> List.map back xs | _ -> fail "unexpected reply to eigen") vectors)
+          | _ -> fail "unexpected reply to eigen")
+        vs
+  | _ -> fail "unexpected reply to eigen"
 
 (* A basis of the nullspace of a rational matrix with [cols] columns. *)
 let nullspace (rows : Q.t list list) cols =

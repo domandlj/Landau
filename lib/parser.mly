@@ -7,7 +7,7 @@ open Syntax
 %token THEORY END IMPORT DIM VAR DEF LAW DERIVE SOLVE FOR SUBST INTO SIMPLIFY UNFOLD ROOT
 %token COMPONENT OF EXPAND DIFFERENTIATE BY APPLY TO INTEGRATE FROM WITH UNIT
 %token EVALUATE IN DIGITS CONST COMPUTE APPROXIMATE WHERE ORDER LIMIT AS MUCHLESS ARROW
-%token NUMERICALLY NEAR SIMULATE POINTS DIAGRAM BODY FORCE TOWARD ACCELERATES PLANE DRAW MARK BETWEEN AND GROUPS
+%token NUMERICALLY NEAR SIMULATE POINTS DIAGRAM BODY FORCE TOWARD ACCELERATES PLANE DRAW MARK BETWEEN AND GROUPS EIGEN
 %token COLON COMMA EQ ASSIGN PLUS MINUS STAR SLASH CARET
 %token LPAREN RPAREN LBRACK RBRACK DOT EOF
 
@@ -47,6 +47,7 @@ decl_desc:
   | DIAGRAM n = ID COLON items = list(ditem) END { Diagram (n, items) }
   | GROUPS n = ID COLON t = ID FROM xs = separated_nonempty_list(COMMA, ID) { Groups (n, Some t, xs) }
   | GROUPS n = ID COLON xs = separated_nonempty_list(COMMA, ID) { Groups (n, None, xs) }
+  | EIGEN n = ID COLON a = expr b = option(preceded(COMMA, expr)) { Eigen (n, a, b) }
   | SIMULATE n = ID COLON laws = separated_nonempty_list(COMMA, satom) FOR xs = separated_nonempty_list(COMMA, ID)
     FROM t = ID EQ a = expr TO b = expr WITH ics = separated_nonempty_list(COMMA, equation)
     p = option(preceded(POINTS, NUM))

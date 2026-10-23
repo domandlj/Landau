@@ -1,0 +1,94 @@
+-- Matrices: shapes and dimensions, products that keep their order, det,
+-- inv, trace and transpose, eigenvalues (plain, generalized, complex and
+-- repeated), and the errors.
+theory Springs
+  dim M, L, T
+  var m, k : M, positive
+  var k1, k2 : M/T^2, positive
+  var ω : 1/T, positive
+  var Kmat : M/T^2, matrix(2)
+  var Mmat : M, matrix(2)
+  var x : L, vector(2)
+  var F : M*L/T^2, vector(2)
+  law stiffness: Kmat = mat(vec(k1 + k2, -k2), vec(-k2, k2 + k1))
+  law mass:      Mmat = mat(vec(m, 0), vec(0, m))
+  law hooke:     F = -Kmat*x
+  law modes:     det(Kmat - ω^2*Mmat) = 0
+  derive freq:
+    a := subst stiffness into modes
+    b := subst mass into a
+    simplify b
+  end
+  derive restoring:
+    s := subst stiffness into hooke
+    simplify s
+  end
+end
+theory Algebra
+  dim L
+  var A, B : L, matrix(2)
+  var C : L^2, matrix(2)
+  var D : 1, matrix(2)
+  law prod: C = A*B
+  law commute: C = B*A
+  law t: D = transpose(identity(2))
+  derive diff:
+    s := subst prod into commute
+    simplify s
+  end
+  compute det(mat(vec(1, 2), vec(3, 4)))
+  compute trace(inv(mat(vec(2, 0), vec(0, 4))))
+end
+theory Bad
+  dim L
+  var A : L, matrix(2)
+  var v : L, vector(3)
+  var w : L, vector(2)
+  law a: w = A*v
+  law b: w = w*A
+  law c: A = A^2
+  law d: w = A/A
+  var P : L, matrix(1)
+  var Q : L, matrix(2), positive
+end
+theory Modes
+  dim M, L, T
+  var m : M, positive
+  var k, κ : M/T^2, positive
+  var K : M/T^2, matrix(2)
+  var Mm : M, matrix(2)
+  law stiffness: K = mat(vec(k + κ, -κ), vec(-κ, k + κ))
+  law mass:      Mm = mat(vec(m, 0), vec(0, m))
+  eigen modes: K, Mm
+  eigen plain: mat(vec(2, 1), vec(1, 2))
+end
+theory Spin
+  var Sx, Sz : 1, matrix(2)
+  law pauli_x: Sx = mat(vec(0, 1), vec(1, 0))
+  eigen sx: Sx
+  eigen rot: mat(vec(0, -1), vec(1, 0))
+  eigen same: identity(2)
+end
+
+-- Sums: entry by entry, and only of matrices of one size and dimension.
+theory Sums
+  dim L, T
+  var A, B, C : L, matrix(2)
+  var E : L, matrix(3)
+  var F : T, matrix(2)
+  var a, b, c, d, p, q, r, s : L
+  law ab: C = A + B
+  law sa: A = mat(vec(a, b), vec(c, d))
+  law sb: B = mat(vec(p, q), vec(r, s))
+  derive added:
+    x := subst sa into ab
+    y := subst sb into x
+    simplify y
+  end
+  compute entry(mat(vec(1, 2), vec(3, 4)) + mat(vec(10, 20), vec(30, 40)), 1, 2)
+  compute det(mat(vec(1, 2), vec(3, 4)) + mat(vec(10, 20), vec(30, 40)))
+  compute mat(vec(1, 2), vec(3, 4)) + mat(vec(10, 20), vec(30, 40))
+  law size: A = A + E
+  law dims: A = A + F
+  law scalar: A = A + 1
+end

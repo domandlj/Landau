@@ -96,3 +96,87 @@ Units: SI, declared units, scale factors, and their errors.
   cases/units/annotated_def.lan:5: error: the argument `3 [s]` of `kinetic` is [T], but `kinetic` expects [L/T] there
   
   [1]
+
+Angles: degrees are exactly pi/180 rad, a unit may be scaled by pi, and a lone
+angle keeps its unit. Radians and cycles are both dimensionless, so a value in
+rad/s cannot be shown in Hz, or back, without the 2π; that is an error rather
+than a number off by 2π.
+
+  $ landau cases/units/angles.lan
+  theory Angles
+    import SI
+    unit rev = 2*pi [1], arcmin = pi/10800 [1]
+    var ω : rad/s   [1/T]
+    var f : Hz   [1/T]
+    law spin : ω = 2*pi*f   [1/T]
+    compute sin(30 [deg]) = 0.5   [1]
+    compute 90 [deg] = 1.5708 [rad]   [1]
+    compute pi/4 = 45 [deg]   [1]
+    compute 1 [rad] = 57.29578 [deg]   [1]
+    compute 1 [arcmin] = 0.01667 [deg]   [1]
+    compute 33 [rev/min] = 3.45575 [rad/s]   [1/T]
+    compute 360 [deg/s] = 6.28319 [rad/s]   [1/T]
+    compute 3 [rad/s] = 3 [1/s]   [1/T]
+    compute 3 [rad/s]/(2*pi) = 0.477465 [Hz]   [1/T]
+    compute th = 45 [deg] = 45 [deg]   [1]
+    compute cos(th)^2 = 0.5   [1]
+    derive w : ω = 314.159 [rad/s]   [1/T]
+        from    Angles.spin
+        via     instantiate, evaluate in rad/s
+  
+  theory ToHz
+    import SI
+  cases/units/angles.lan:28: error: `3 [rad/s]` cannot be given in Hz without a factor 2π: Hz counts cycles, and a cycle is 2π rad. Write `3 [rad/s]/(2*pi)` in Hz
+  
+  theory FromHz
+    import SI
+  cases/units/angles.lan:33: error: `50 [Hz]` cannot be given in rad/s without a factor 2π: Hz counts cycles, and a cycle is 2π rad. Write `2*pi*50 [Hz]` in rad/s
+  
+  theory Degrees
+    import SI
+    var ω : deg/s   [1/T]
+    const ω0 = 10 [deg/s]   [1/T]
+  cases/units/angles.lan:40: error: `ω0` cannot be given in Hz without a factor 2π: Hz counts cycles, and a cycle is 2π rad. Write `ω0/(2*pi)` in Hz
+  
+  [1]
+
+A bare number for a variable declared in degrees would be read as radians, so
+it is an error, in a substitution and as an initial value. With its unit, as 0,
+or for a variable declared in rad, it is accepted.
+
+  $ landau cases/units/bare_angles.lan
+  theory Fine
+    import SI
+    var θ : deg   [1]
+    var φ : rad   [1]
+    var y, r : m   [L]
+    law height : y = r*sin(θ)   [L]
+    law height2 : y = r*sin(φ)   [L]
+    derive with_unit : y = 1 [m]   [L]
+        from    Fine.height
+        via     instantiate, evaluate in m
+    derive zero : y = 0 [m]   [L]
+        from    Fine.height
+        via     instantiate, evaluate in m
+    derive radians : y = 0.958851 [m]   [L]
+        from    Fine.height2
+        via     instantiate, evaluate in m
+  
+  theory Bare
+    import SI
+    var θ : deg   [1]
+    var y, r : m   [L]
+    law height : y = r*sin(θ)   [L]
+  cases/units/bare_angles.lan:30: error: `θ` is declared in deg: write `θ := 30 [deg]` (a bare 30 would be 30 rad)
+  cases/units/bare_angles.lan:33: error: `θ` is declared in deg: write `θ := -(30 [deg])` (a bare -30 would be -30 rad)
+  
+  theory Swing
+    import SI
+    var t : s   [T]
+    var θ(t) : deg   [1]
+    law swing : diff(diff(θ, t), t) = -(9.8 [m/s^2])/(1 [m])*sin(θ)   [1/T^2]
+    simulate fine: t from 0 to 2 [s], 5 points (DOP853)
+        θ: starts at 30, ends at 29.7523, between -29.938 and 30 [deg]
+  cases/units/bare_angles.lan:43: error: `θ` is declared in deg: write `θ(0 [s]) = 30 [deg]` (a bare 30 would be 30 rad)
+  
+  [1]

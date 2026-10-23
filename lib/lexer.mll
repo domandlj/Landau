@@ -15,7 +15,7 @@ let keywords =
     ("limit", LIMIT); ("as", AS); ("numerically", NUMERICALLY); ("near", NEAR);
     ("simulate", SIMULATE); ("points", POINTS); ("diagram", DIAGRAM); ("body", BODY);
     ("force", FORCE); ("toward", TOWARD); ("accelerates", ACCELERATES); ("plane", PLANE); ("draw", DRAW);
-    ("mark", MARK); ("between", BETWEEN); ("and", AND); ("groups", GROUPS) ]
+    ("mark", MARK); ("between", BETWEEN); ("and", AND); ("groups", GROUPS); ("eigen", EIGEN) ]
 
 (* "9.81" -> 981/100 and "1.6e-19" -> 16/10^20, exactly *)
 let decimal s =

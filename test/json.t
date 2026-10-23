@@ -9,12 +9,14 @@ whether the file checked.
   errors.lan False
   forces.lan True
   integrals.lan True
+  matrices.lan True
   maxwell.lan True
   motion.lan True
   numbers.lan True
   numerical.lan True
   projectile.lan True
   quantum.lan True
+  series.lan True
   systems.lan True
   units.lan True
   work.lan True

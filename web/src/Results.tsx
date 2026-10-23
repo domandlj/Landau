@@ -6,6 +6,7 @@ import { SimPlot } from "./SimPlot";
 import type {
   ComputeItem,
   DiagramItem,
+  EigenItem,
   GroupsItem,
   SimulateItem,
   DefItem,
@@ -186,6 +187,29 @@ function Compute({ item, goTo }: { item: ComputeItem; goTo: GoTo }) {
   );
 }
 
+function Eigen({ item, goTo }: { item: EigenItem; goTo: GoTo }) {
+  const problem = item.b ? `${item.a.latex}\\,\\vec{v} = \\lambda\\, ${item.b.latex}\\,\\vec{v}` : `${item.a.latex}\\,\\vec{v} = \\lambda\\,\\vec{v}`;
+  return (
+    <Card kind="eigen" name={item.name} line={item.line} goTo={goTo}>
+      <div className="equation">
+        <Tex latex={problem} display />
+        <DimBadge dim={item.dim} shape="scalar" />
+      </div>
+      <div className="eigen-list">
+        {item.values.map((v, i) => (
+          <div key={i} className="eigen-row">
+            <Tex latex={`\\displaystyle \\lambda_{${i + 1}} = ${v.value.latex}`} />
+            {v.multiplicity > 1 && <span className="groups-note">{v.multiplicity === 2 ? "twice" : `${v.multiplicity} times`}</span>}
+            {v.vectors.map((vec, j) => (
+              <Tex key={j} latex={`\\displaystyle \\vec{v}_{${i + 1}}${v.vectors.length > 1 ? `^{(${j + 1})}` : ""} = ${vec.latex}`} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function Groups({ item, goTo }: { item: GroupsItem; goTo: GoTo }) {
   const dimTex = useDimTex();
   return (
@@ -272,7 +296,7 @@ function Quantities({ items, goTo }: { items: Item[]; goTo: GoTo }) {
           )}
           {units.map((u) => (
             <span key={u.name} className="chip chip-unit" title={u.base ? "base unit" : `factor ${u.factor}`}>
-              <Tex latex={`${u.latex} ${u.base ? ":" : "="} ${u.base || u.factor === "1" ? "" : factorTex(u.factor) + "\\,"}${dimTex(u.dim)}`} />
+              <Tex latex={`${u.latex} ${u.base ? ":" : "="} ${u.base || u.factor === "1" ? "" : factorTex(u.factor_latex) + "\\,"}${dimTex(u.dim)}`} />
             </span>
           ))}
           {aliases.map((a) => (
@@ -318,6 +342,7 @@ function TheoryView({ theory, goTo }: { theory: Theory; goTo: GoTo }) {
           case "simulate": return <Simulate key={k} item={item} goTo={goTo} />;
           case "diagram": return <Diagram key={k} item={item} goTo={goTo} />;
           case "groups": return <Groups key={k} item={item} goTo={goTo} />;
+          case "eigen": return <Eigen key={k} item={item} goTo={goTo} />;
           case "error": return <ErrorCard key={k} item={item} goTo={goTo} />;
           default: return null;
         }

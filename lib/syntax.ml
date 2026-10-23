@@ -91,6 +91,7 @@ type decl_desc =
   | Compute of string option * expr * dexpr option * int option (* compute E1 = f(2 [kg]) in J digits 3 *)
   | Simulate of simulation
   | Groups of string * string option * string list (* groups period: T from L, g, m *)
+  | Eigen of string * expr * expr option (* eigen modes: K, M -- K v = λ M v *)
   | Diagram of string * diagram_item list
   | DimAlias of string * dexpr
   | VarDecl of (string * string list) list * dexpr * string list (* x(t), x0 : L, positive *)

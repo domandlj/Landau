@@ -96,12 +96,12 @@ end
       {
         syntax: "groups name: P, ℓ, g, m, θ0",
         tex: r`\Pi_{1} = \frac{g\,P^{2}}{\ell},\quad \Pi_{2} = \theta_{0}`,
-        text: "The dimensionless groups $\Pi_1, \Pi_2, \ldots$ of the variables: one for each variable beyond the number of independent dimensions. Earlier variables are the ones used to make the later ones dimensionless. A variable that no product of the others matches in dimension, like `m` here (nothing else has M), cannot appear in any group.",
+        text: "The dimensionless groups $\\Pi_1, \\Pi_2, \\ldots$ of the variables: one for each variable beyond the number of independent dimensions. Earlier variables are the ones used to make the later ones dimensionless. A variable that no product of the others matches in dimension, like `m` here (nothing else has M), cannot appear in any group.",
       },
       {
         syntax: "groups name: P from ℓ, g, m, θ0",
         tex: r`P = \sqrt{\frac{\ell}{g}}\,\Phi(\theta_{0})`,
-        text: "Also solves for `P`: it is a product of the others times an unknown function $\Phi$ of the remaining groups, or times a dimensionless constant $C$ when no groups are left. It is an error if no product of the others has `P`'s dimension.",
+        text: "Also solves for `P`: it is a product of the others times an unknown function $\\Phi$ of the remaining groups, or times a dimensionless constant $C$ when no groups are left. It is an error if no product of the others has `P`'s dimension.",
       },
     ],
     tryIt: `-- What can a pendulum's period depend on?
@@ -122,14 +122,19 @@ end
     title: "Units",
     intro:
       "`import SI` brings the SI units, and a variable can then be declared in units instead of dimensions. " +
-      "Checking is still by dimension, so `km/h` and `m/s` are both speeds; units are for reading. The *Dims / Units* " +
-      "switch at the top shows results in either. In SI, `T` is the tesla and `N` the newton, so its dimensions are " +
+      "Checking is still by dimension, so `km/h` and `m/s` are both speeds; units are for reading. *Show* in the ⚙ " +
+      "settings shows results in either. In SI, `T` is the tesla and `N` the newton, so its dimensions are " +
       "named in words, `Mass`, `Length`, `Time`, `Current`, `Temperature`, `Amount`, `Luminosity`, and shown as " +
       "$\\mathsf{M, L, T, I, \\Theta, N, J}$.",
     entries: [
       {
         syntax: "import SI",
-        text: "Base units `kg m s A K mol cd`; `N J W Pa C V Ω F S Wb T H Hz Bq Gy Sv rad sr`; and `g km cm mm nm min h ms kJ eV atm bar`.",
+        text: "Base units `kg m s A K mol cd`; `N J W Pa C V Ω F S Wb T H Hz Bq Gy Sv rad sr deg`; and `g km cm mm nm min h ms kJ eV atm bar`.",
+      },
+      {
+        syntax: "sin(30 [deg])   unit rev = 2*pi*rad",
+        tex: r`1^{\circ} = \frac{\pi}{180}\,\mathrm{rad}`,
+        text: "Angles are dimensionless, as in the SI: `rad` is 1 and `deg` is exactly $\\pi/180$ rad, so `sin(30 [deg])` is 1/2. Declare an angle as `var θ : deg` (or `rad`); a value for it then needs its unit, `θ := 30 [deg]`, since a bare 30 would be 30 rad. A unit's factor may contain `pi`. Since radians and cycles are both just numbers, `compute 3 [rad/s] in Hz` is an error asking for the 2π (1 Hz is 2π rad/s); a law `ω = f` is not caught.",
       },
       { syntax: "var F : N", tex: r`F \;[\mathrm{N}]`, text: "A variable in units; shown in that unit. Units and dimensions can be mixed: `var p : kg*Length/s`." },
       {
@@ -233,7 +238,7 @@ end
       },
       {
         syntax: "var t : T, positive",
-        text: "Attributes: `positive`, `nonzero`, `real`, `complex`. They tell SymPy what it may assume (and are listed under *assumes*): with `positive`, $\\sqrt{t^2} = t$ and negative roots are discarded.",
+        text: "Attributes: `positive`, `nonzero`, `real`, `complex`, `integer`. They tell SymPy what it may assume (and are listed under *assumes*): with `positive`, $\\sqrt{t^2} = t$ and negative roots are discarded; with `integer` (for a dimensionless count such as a level `n`), $\\sin(n\\pi) = 0$ and $\\cos(n\\pi) = (-1)^n$.",
       },
       {
         syntax: "var E : M*L/(T^3*I), vector",
@@ -248,7 +253,7 @@ end
       {
         syntax: "var x(t) : L",
         tex: r`x(t)`,
-        text: "`x` depends on `t`. Undeclared variables are constants, so $\\frac{\\mathrm{d}}{\\mathrm{d}t}(x_0 + v_0 t) = v_0$. A variable may depend only on independent variables (`t`, the position).",
+        text: "`x` depends on `t`. Undeclared variables are constants, so $\\frac{\\mathrm{d}}{\\mathrm{d}t}(x_0 + v_0 t) = v_0$. A variable may also depend on another that depends on something: with `var θ(t)` and `var h(θ)`, `diff(h, t)` follows the chain rule, $\\dot h = h'(\\theta)\\,\\dot\\theta$.",
       },
       { syntax: "var E(r, t) : ..., vector", tex: r`\vec{E}(\vec{r}, t)`, text: "A field: depends on position and time." },
     ],
@@ -331,6 +336,41 @@ end
 `,
   },
   {
+    id: "matrices",
+    title: "Matrices",
+    intro:
+      "Square matrices, all of whose entries share one dimension (as a vector's components do). Everything stays symbolic: " +
+      "SymPy works out determinants, inverses and eigenvalues from the entries, in closed form for 2x2 and 3x3. " +
+      "Products keep their order, so `A*B` and `B*A` are different.",
+    entries: [
+      { syntax: "var K : M/T^2, matrix(2)", tex: r`\boldsymbol{K}`, text: "A 2x2 matrix whose entries are all $\\mathsf{M/T^2}$; shown in bold." },
+      { syntax: "mat(vec(a, b), vec(c, d))", tex: r`\begin{pmatrix} a & b \\ c & d \end{pmatrix}`, text: "A matrix written row by row." },
+      { syntax: "K*x   A*B   k*A   A + B", text: "Matrix times vector, matrix times matrix (in that order), a number times a matrix, sums. A vector times a matrix, `x*K`, is an error." },
+      { syntax: "det(A)   trace(A)", tex: r`\det \boldsymbol{A} \quad \operatorname{tr} \boldsymbol{A}`, text: "For an n x n matrix, `det` has n times its dimension and `trace` the same dimension." },
+      { syntax: "inv(A)   transpose(A)   identity(n)", tex: r`\boldsymbol{A}^{-1} \quad \boldsymbol{A}^{\mathsf{T}} \quad \mathbf{1}_{n}`, text: "The inverse has the inverse dimension; the identity is dimensionless." },
+      { syntax: "entry(A, i, j)", tex: r`A_{ij}`, text: "One entry." },
+      {
+        syntax: "eigen name: A        eigen name: K, M",
+        tex: r`\boldsymbol{K}\,\vec{v} = \lambda\, \boldsymbol{M}\,\vec{v}`,
+        text: "The eigenvalues of A with their eigenvectors (scaled so the first nonzero entry is 1), or those of $K\\vec v = \\lambda M\\vec v$, which gives normal modes: $\\lambda = \\omega^2$, with the dimension of K over M. A matrix variable stands for the law that defines it, `K = mat(...)`.",
+      },
+    ],
+    tryIt: `-- Two masses joined by springs: the normal modes.
+theory Coupled
+  dim M, L, T
+  var m : M, positive
+  var k, κ : M/T^2, positive
+  var K : M/T^2, matrix(2)
+  var Mm : M, matrix(2)
+
+  law stiffness: K = mat(vec(k + κ, -κ), vec(-κ, k + κ))
+  law mass:      Mm = mat(vec(m, 0), vec(0, m))
+
+  eigen modes: K, Mm      -- ω² = k/m and (k + 2κ)/m
+end
+`,
+  },
+  {
     id: "calculus",
     title: "Derivatives",
     intro:
@@ -375,6 +415,11 @@ end
     entries: [
       { syntax: "integral(f, x)", tex: r`\int f\,\mathrm{d}x`, text: "An antiderivative, without the constant." },
       { syntax: "integral(f, x, a, b)", tex: r`\int_a^b f\,\mathrm{d}x`, text: "Definite; the bounds have the dimension of `x` and may be `-inf`, `inf`." },
+      {
+        syntax: "sum(f, k, a, b)",
+        tex: r`\sum_{k=a}^{b} f`,
+        text: "A sum over k = a, a+1, ..., b; `b` may be `inf`. `k` is the sum's own whole-number counter and needs no `var`; it and the bounds are dimensionless, and the sum has the dimension of `f`. `simplify` finds closed forms such as $\\sum 1/k^2 = \\pi^2/6$ or a geometric series; a sum with none (or whose answer depends on cases, like $r = 1$) is left as it is, and `compute` still gives its value.",
+      },
       {
         syntax: "line(F, p, s, a, b)",
         tex: r`\int \vec{F} \cdot \mathrm{d}\vec{r} = \int_a^b \vec{F}(\vec{p}(s)) \cdot \frac{\mathrm{d}\vec{p}}{\mathrm{d}s}\,\mathrm{d}s`,
@@ -510,19 +555,24 @@ end
       },
       { syntax: "?  or  F1", text: "Opens this help (when the editor does not have the focus); `Esc` closes it." },
       {
-        syntax: "Dims | Units",
+        syntax: "⚙ Settings",
+        text: "How results are shown, below; your choices are kept in this browser. `Esc` or a click outside closes it.",
+      },
+      {
+        syntax: "Show: Dimensions | Units",
         text: "Shows results in dimensions or in units. Units appear where they are known: with `import SI` or your own `unit` declarations.",
       },
       {
-        syntax: "dx/dt  |  ẋ  |  x′",
+        syntax: "Derivatives: dx/dt | ẋ | x′",
         tex: r`\frac{\mathrm{d}^{2} x}{\mathrm{d} t^{2}} \quad \ddot{x} \quad x''`,
-        text: "How derivatives are written: Leibniz, Newton's dots (only for derivatives by a variable of dimension T; others stay $\mathrm{d}y/\mathrm{d}x$) or primes. Partial derivatives are always $\partial u/\partial x$.",
+        text: "How derivatives are written: Leibniz, Newton's dots (only for derivatives by a variable of dimension T; others stay $\\mathrm{d}y/\\mathrm{d}x$) or primes. Partial derivatives are always $\\partial u/\\partial x$.",
       },
       {
-        syntax: "L/T  |  L·T⁻¹",
+        syntax: "Write: L/T | L·T⁻¹",
         tex: r`\mathsf{M\,L/T^{2}} \quad\text{or}\quad \mathsf{M\,L\,T^{-2}}`,
-        text: "The switch in the top bar writes dimensions as fractions or with negative powers. Both mean the same, and you can type either: `L/T`, `L*T^-1` and `T^(-1)*L` are equal.",
+        text: "Writes dimensions as fractions or with negative powers. Both mean the same, and you can type either: `L/T`, `L*T^-1` and `T^(-1)*L` are equal.",
       },
+      { syntax: "Theme: Dark | Light", text: "Dark is the default." },
       { syntax: "Draft", text: "What you type is kept in this browser between visits, even unsaved, and so are the display settings." },
     ],
   },

@@ -3,6 +3,8 @@ import { Editor, type EditorHandle } from "./Editor";
 import { Help } from "./Help";
 import { DerivStyleContext, DimStyleContext, type DerivStyle, type DimMode, type DimStyle } from "./dimStyle";
 import { Results } from "./Results";
+import { Settings } from "./Settings";
+import { applyTheme, loadTheme, type Theme } from "./theme";
 import {
   checkSource,
   deleteModule,
@@ -97,6 +99,11 @@ export function App() {
   const chooseDerivStyle = (style: DerivStyle) => {
     setDerivStyle(style);
     saveSetting(DERIV_STYLE_KEY, style);
+  };
+  const [theme, setTheme] = useState<Theme>(loadTheme);
+  const chooseTheme = (next: Theme) => {
+    applyTheme(next);
+    setTheme(next);
   };
   // #help opens the reference; #help/integrals opens it at that section
   const [helpOpen, setHelpOpen] = useState(() => location.hash.startsWith("#help"));
@@ -301,58 +308,11 @@ export function App() {
           </button>
         )}
         <div className="spacer" />
-        <div className="segmented" role="group" aria-label="Show dimensions or units">
-          <button aria-pressed={dimMode === "dims"} onClick={() => chooseDimMode("dims")} title="Show dimensions: M·L/T²">
-            Dims
-          </button>
-          <button
-            aria-pressed={dimMode === "units"}
-            onClick={() => chooseDimMode("units")}
-            title="Show units where they are declared (import SI): N, kg·m/s²"
-          >
-            Units
-          </button>
-        </div>
-        <div className="segmented" role="group" aria-label="How dimensions are written">
-          <button
-            aria-pressed={dimStyle === "fraction"}
-            onClick={() => chooseDimStyle("fraction")}
-            title="Dimensions as fractions: L/T, M·L/T²"
-          >
-            L/T
-          </button>
-          <button
-            aria-pressed={dimStyle === "powers"}
-            onClick={() => chooseDimStyle("powers")}
-            title="Dimensions with negative powers: L·T⁻¹, M·L·T⁻²"
-          >
-            L·T⁻¹
-          </button>
-        </div>
-        <div className="segmented" role="group" aria-label="How derivatives are written">
-          <button
-            aria-pressed={derivStyle === "leibniz"}
-            onClick={() => chooseDerivStyle("leibniz")}
-            title="Leibniz notation: dx/dt, d²x/dt²"
-          >
-            dx/dt
-          </button>
-          <button
-            aria-pressed={derivStyle === "newton"}
-            onClick={() => chooseDerivStyle("newton")}
-            title="Newton's dots for time derivatives: ẋ, ẍ (others stay dx/dy)"
-          >
-            ẋ
-          </button>
-          <button
-            aria-pressed={derivStyle === "lagrange"}
-            onClick={() => chooseDerivStyle("lagrange")}
-            title="Lagrange's primes: x′, x″"
-          >
-            x′
-          </button>
-        </div>
         <StatusPill status={status} report={report} errors={errorCount} />
+        <Settings
+          values={{ dimMode, dimStyle, derivStyle, theme }}
+          set={{ setDimMode: chooseDimMode, setDimStyle: chooseDimStyle, setDerivStyle: chooseDerivStyle, setTheme: chooseTheme }}
+        />
         <button
           ref={helpButton}
           className="help-button"

@@ -1,4 +1,5 @@
 // The in-app reference: its formulas render, and its programs check.
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { HELP } from "../src/help";
@@ -34,3 +35,13 @@ test.each(programs)("the %s program checks", async (_, source) => {
   expect(r.ok).toBe(true);
   expect(r.theories.length).toBeGreaterThan(0);
 }, 120_000);
+
+// In an ordinary string, "$\\pi$" loses its backslash ("\p" is just "p"), and
+// what is left still renders, as the word pi. So read the source: outside
+// raw strings (r`...`), a backslash before a letter must be doubled.
+test("help text doubles its LaTeX backslashes", () => {
+  const source = readFileSync(new URL("../src/help.ts", import.meta.url), "utf8").replace(/r`[^`]*`/g, "");
+  const strings = source.match(/"(?:[^"\\\n]|\\.)*"/g) ?? [];
+  const lost = strings.filter((s) => /(?<!\\)\\(?!n)[A-Za-z]/.test(s));
+  expect(lost).toEqual([]);
+});

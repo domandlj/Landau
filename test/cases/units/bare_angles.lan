@@ -1,0 +1,44 @@
+-- A bare number for a variable declared in degrees would be read as radians,
+-- so it is an error; with its unit, as 0, or for a variable in rad, it is fine.
+theory Fine
+  import SI
+  var θ : deg
+  var φ : rad
+  var y, r : m
+  law height: y = r*sin(θ)
+  law height2: y = r*sin(φ)
+  derive with_unit:
+    s := height[r := 2 [m], θ := 30 [deg]]
+    evaluate s in m
+  end
+  derive zero:
+    s := height[r := 2 [m], θ := 0]
+    evaluate s in m
+  end
+  derive radians:
+    s := height2[r := 2 [m], φ := 0.5]
+    evaluate s in m
+  end
+end
+
+theory Bare
+  import SI
+  var θ : deg
+  var y, r : m
+  law height: y = r*sin(θ)
+  derive bare:
+    s := height[r := 2 [m], θ := 30]
+  end
+  derive negative:
+    s := height[r := 2 [m], θ := -30]
+  end
+end
+
+theory Swing
+  import SI
+  var t : s
+  var θ(t) : deg
+  law swing: diff(diff(θ, t), t) = -(9.8 [m/s^2]/(1 [m]))*sin(θ)
+  simulate fine: swing for θ from t = 0 [s] to 2 [s] with θ(0 [s]) = 30 [deg], at(diff(θ, t), t, 0 [s]) = 0 [deg/s] points 5
+  simulate bare: swing for θ from t = 0 [s] to 2 [s] with θ(0 [s]) = 30, at(diff(θ, t), t, 0 [s]) = 0 [deg/s] points 5
+end

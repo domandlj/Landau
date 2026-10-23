@@ -1,0 +1,52 @@
+-- The chain rule: y depends on x, which depends on t.
+theory Bead
+  dim L, T
+  var t : T
+  var x(t) : L
+  var y(x) : L
+  var vy : L/T
+  var ay : L/T^2
+  law vertical: vy = diff(y, t)
+  law accel:    ay = diff(diff(y, t), t)
+  derive chain:                    -- dy/dt = y'(x) ẋ
+    simplify vertical
+  end
+  derive chain2:
+    simplify accel
+  end
+end
+
+-- A pendulum: the bob's height h depends on the angle θ, which depends on t.
+theory Pendulum
+  dim L, T
+  var t : T
+  var θ(t) : 1
+  var ω : 1/T, positive
+  var ℓ : L, positive
+  var h(θ) : L
+  var vh : L/T
+  law height: h = -ℓ*cos(θ)
+  law rate:   vh = diff(h, t)
+  derive speed:                    -- vh = ℓ sin(θ) θ̇
+    s := subst height into rate
+    simplify s
+  end
+  derive steady:                   -- θ = ωt: h(ωt), vh = ℓ ω sin(ωt)
+    s := speed[θ := ω*t]
+    simplify s
+  end
+  derive general:                  -- the chain rule, left general
+    s := rate[θ := ω*t]
+    simplify s
+  end
+end
+
+-- y depends on x, but x is a constant: dy/dt is always 0, which is an error.
+theory NoPath
+  dim L, T
+  var t : T
+  var x : L
+  var y(x) : L
+  var v : L/T
+  law l: v = diff(y, t)
+end

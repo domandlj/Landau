@@ -805,6 +805,24 @@ against an independent calculation when the feature was added.
           q := s = diff(a*x^2, x)
           s = 2*a*x
   
+  theory Bead
+    dim L, T
+    var t : T
+    var x(t) : L
+    var y(x) : L
+    var vy : L/T
+    var ay : L/T^2
+    law climb : vy = diff(y, t)   [L/T]
+    law rise : ay = diff(diff(y, t), t)   [L/T^2]
+    derive chain : vy = diff(y, x)*diff(x, t)   [L/T]
+        from    Bead.climb
+        via     simplify
+          vy = diff(y, x)*diff(x, t)
+    derive chain2 : ay = diff(x, t)^2*diff(diff(y, x), x) + diff(y, x)*diff(diff(x, t), t)   [L/T^2]
+        from    Bead.rise
+        via     simplify
+          ay = diff(x, t)^2*diff(diff(y, x), x) + diff(y, x)*diff(diff(x, t), t)
+  
   theory Wave
     dim L, T
     var x : L
@@ -884,6 +902,162 @@ against an independent calculation when the feature was added.
         Π1 = c^3*ℓ_P^2/(ħ*G)
         ℓ_P = C*sqrt(ħ*G/c^3)   (C: a dimensionless constant)
     compute sqrt(ħ*G/c^3) = 1.616e-35 [m]   [L]
+  
+
+  $ landau -v ../modules/series.lan
+  theory Zeta
+    var Z2, Z4 : 1
+    law basel : Z2 = sum(1/k^2, k, 1, inf)   [1]
+    law fourth : Z4 = sum(1/k^4, k, 1, inf)   [1]
+    derive two : Z2 = pi^2/6   [1]
+        from    Zeta.basel
+        via     simplify
+          Z2 = pi^2/6
+    derive four : Z4 = pi^4/90   [1]
+        from    Zeta.fourth
+        via     simplify
+          Z4 = pi^4/90
+  
+  theory Oscillator
+    dim M, L, T
+    var ħ : M*L^2/T, positive
+    var ω : 1/T, positive
+    var β : T^2/(M*L^2), positive
+    var Z(β) : 1
+    var U : M*L^2/T^2
+    law partition : Z = sum(exp(-β*ħ*ω*(k + 1/2)), k, 0, inf)   [1]
+    law mean : U = -diff(log(Z), β)   [M*L^2/T^2]
+    derive closed : Z = 1/(2*sinh(β*ħ*ω/2))   [1]
+        from    Oscillator.partition
+        assumes β > 0, ħ > 0, ω > 0
+        via     simplify
+          Z = 1/(2*sinh(β*ħ*ω/2))
+    derive energy : U = ħ*ω/(2*tanh(β*ħ*ω/2))   [M*L^2/T^2]
+        from    Oscillator.partition, Oscillator.mean
+        assumes β > 0, ħ > 0, ω > 0
+        via     subst, simplify
+          s := U = -diff(log(1/(2*sinh(β*ħ*ω/2))), β)
+          U = ħ*ω/(2*tanh(β*ħ*ω/2))
+  
+  theory Box
+    dim M, L, T
+    var n : 1, integer, positive
+    var m : M, positive
+    var a : L, positive
+    var x : L
+    var ħ : M*L^2/T
+    var k : 1/L
+    var E : M*L^2/T^2
+    var ψa, N : 1
+    law wall : ψa = sin(n*pi)   [1]
+    law norm : N = integral(sin(n*pi*x/a)^2, x, 0, a)/a   [1]
+    law wave : k = n*pi/a   [1/L]
+    law energy : E = ħ^2*k^2/(2*m)   [M*L^2/T^2]
+    derive vanishes : ψa = 0   [1]
+        from    Box.wall
+        assumes n a positive integer
+        via     simplify
+          ψa = 0
+    derive half : N = 1/2   [1]
+        from    Box.norm
+        assumes n a positive integer, a > 0
+        via     simplify
+          N = 1/2
+    derive levels : E = pi^2*ħ^2*n^2/(2*a^2*m)   [M*L^2/T^2]
+        from    Box.wave, Box.energy
+        assumes n a positive integer, a > 0, m > 0
+        via     subst, simplify
+          s := E = ħ^2*(n*pi/a)^2/(2*m)
+          E = pi^2*ħ^2*n^2/(2*a^2*m)
+  
+  theory Square
+    var n : 1, integer, positive
+    var x, b : 1
+    law coefficient : b = 2/pi*integral(sin(n*x), x, 0, pi)   [1]
+    derive bn : b = 2*(1 - (-1)^n)/(pi*n)   [1]
+        from    Square.coefficient
+        assumes n a positive integer
+        via     simplify
+          b = 2*(1 - (-1)^n)/(pi*n)
+    compute sum(4/pi*sin((2*k - 1)*pi/2)/(2*k - 1), k, 1, 200) = 0.9984   [1]
+  
+
+  $ landau -v ../modules/matrices.lan
+  theory Coupled
+    dim M, L, T
+    var m : M, positive
+    var k, κ : M/T^2, positive
+    var ω : 1/T, positive
+    var K : M/T^2, matrix(2)
+    var Mm : M, matrix(2)
+    var x : L, vector(2)
+    var F : M*L/T^2, vector(2)
+    law stiffness : K = mat(vec(k + κ, -κ), vec(-κ, k + κ))   [2×2-matrix M/T^2]
+    law mass : Mm = mat(vec(m, 0), vec(0, m))   [2×2-matrix M]
+    law springs : F = -K*x   [2-vector M*L/T^2]
+    law modes : det(K - ω^2*Mm) = 0   [M^2/T^4]
+    derive forces : F = vec(x.y*κ - x.x*(k + κ), x.x*κ - x.y*(k + κ))   [2-vector M*L/T^2]
+        from    Coupled.stiffness, Coupled.springs
+        assumes k > 0, κ > 0
+        via     subst, simplify
+          s := F = mat(vec(-(k + κ), κ), vec(κ, -(k + κ)))*x
+          F = vec(x.y*κ - x.x*(k + κ), x.x*κ - x.y*(k + κ))
+    derive characteristic : (k - m*ω^2)*(k + 2*κ - m*ω^2) = 0   [M^2/T^4]
+        from    Coupled.mass, Coupled.stiffness, Coupled.modes
+        assumes k > 0, m > 0, ω > 0, κ > 0
+        via     subst, subst, simplify
+          a := det(mat(vec(k + κ, -κ), vec(-κ, k + κ)) - ω^2*Mm) = 0
+          b := det(mat(vec(k + κ - ω^2*m, -κ), vec(-κ, k + κ - ω^2*m))) = 0
+          (k - m*ω^2)*(k + 2*κ - m*ω^2) = 0
+    eigen normal : K, Mm
+        λ1 = k/m   [1/T^2]
+            v = vec(1, 1)
+        λ2 = (k + 2*κ)/m   [1/T^2]
+            v = vec(1, -1)
+  
+  theory Inertia
+    dim M, L, T
+    var A, B, C : M*L^2, positive
+    var I : M*L^2, matrix(3)
+    var w : 1/T, vector(3)
+    var Lw : M*L^2/T, vector(3)
+    law tensor : I = mat(vec(A, -B, 0), vec(-B, A, 0), vec(0, 0, C))   [3×3-matrix M*L^2]
+    law momentum : Lw = I*w   [3-vector M*L^2/T]
+    derive spin : Lw = vec(w.x*A - w.y*B, w.y*A - w.x*B, w.z*C)   [3-vector M*L^2/T]
+        from    Inertia.tensor, Inertia.momentum
+        assumes A > 0, B > 0, C > 0
+        via     subst, simplify
+          s := Lw = mat(vec(A, -B, 0), vec(-B, A, 0), vec(0, 0, C))*w
+          Lw = vec(w.x*A - w.y*B, w.y*A - w.x*B, w.z*C)
+    eigen principal : I
+        λ1 = C   [M*L^2]
+            v = vec(0, 0, 1)
+        λ2 = A - B   [M*L^2]
+            v = vec(1, 1, 0)
+        λ3 = A + B   [M*L^2]
+            v = vec(1, -1, 0)
+  
+  theory Spin
+    dim M, L, T
+    var ħ : M*L^2/T, positive
+    var ω, Ω : 1/T, positive
+    var σx, σz : 1, matrix(2)
+    var H : M*L^2/T^2, matrix(2)
+    law pauli_x : σx = mat(vec(0, 1), vec(1, 0))   [2×2-matrix 1]
+    law pauli_z : σz = mat(vec(1, 0), vec(0, -1))   [2×2-matrix 1]
+    law hamiltonian : H = ħ/2*(ω*σz + Ω*σx)   [2×2-matrix M*L^2/T^2]
+    derive written : H = mat(vec(ħ*ω/2, ħ*Ω/2), vec(ħ*Ω/2, -ħ*ω/2))   [2×2-matrix M*L^2/T^2]
+        from    Spin.pauli_z, Spin.pauli_x, Spin.hamiltonian
+        assumes ħ > 0, ω > 0, Ω > 0
+        via     subst, subst, simplify
+          a := H = ħ/2*(ω*σz + mat(vec(0, Ω), vec(Ω, 0)))
+          b := H = mat(vec(ħ/2*ω, ħ/2*Ω), vec(ħ/2*Ω, -ħ/2*ω))
+          H = mat(vec(ħ*ω/2, ħ*Ω/2), vec(ħ*Ω/2, -ħ*ω/2))
+    eigen levels : H
+        λ1 = -ħ*sqrt(ω^2 + Ω^2)/2   [M*L^2/T^2]
+            v = vec(1, Ω/(ω - sqrt(ω^2 + Ω^2)))
+        λ2 = ħ*sqrt(ω^2 + Ω^2)/2   [M*L^2/T^2]
+            v = vec(1, Ω/(ω + sqrt(ω^2 + Ω^2)))
   
 
   $ landau -v ../modules/errors.lan

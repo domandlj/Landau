@@ -14,6 +14,7 @@ theory SI
   unit N = kg*m/s^2, J = N*m, W = J/s, Pa = N/m^2
   unit C = A*s, V = W/A, Ω = V/A, F = C/V, S = A/V, Wb = V*s, T = Wb/m^2, H = Wb/A
   unit Hz = 1/s, Bq = 1/s, Gy = J/kg, Sv = J/kg, rad = 1, sr = 1
+  unit deg = pi/180*rad                -- a degree, exactly; sin(30 [deg]) is 1/2
 
   -- scaled units
   unit g = 0.001*kg, km = 1000*m, cm = 0.01*m, mm = 0.001*m, nm = 1e-9*m

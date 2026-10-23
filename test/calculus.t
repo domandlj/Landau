@@ -63,8 +63,7 @@ wave and continuity equations from Maxwell's equations.
     var t : T
     var x : L
     var y(t) : L
-  cases/calculus/derivatives.lan:56: error: `z` can only depend on independent variables, but `y` itself depends on t
-  cases/calculus/derivatives.lan:57: error: `diff(x, t)` is always 0, because `x` does not depend on `t`; declare the dependence, e.g. `var x(t) : ...`
+  cases/calculus/derivatives.lan:56: error: `diff(x, t)` is always 0, because `x` does not depend on `t`; declare the dependence, e.g. `var x(t) : ...`
   
   [1]
 
@@ -309,3 +308,145 @@ wave and continuity equations from Maxwell's equations.
         assumes μ0 > 0, ε0 > 0
         via     apply curl, subst, subst, subst, simplify
   
+
+Sums and integers: closed forms, sums left as they are (a case split, or no
+closed form), a counter that is the sum's own (the theory's k is a length),
+and the integer attribute.
+
+  $ landau -v cases/calculus/sums.lan
+  theory Sums
+    dim L
+    var S, x : L
+    var r, N, A, B, C, D : 1
+    var k : L
+    law gauss : A = sum(k, k, 1, N)   [1]
+    law geometric : B = sum(r^k, k, 0, N)   [1]
+    law zeta3 : C = sum(1/k^3, k, 1, inf)   [1]
+    law lengths : S = sum(x/k^2, k, 1, inf)   [L]
+    law half : D = sum(1/2^k, k, 1, inf)   [1]
+    derive g : A = N*(1 + N)/2   [1]
+        from    Sums.gauss
+        via     simplify
+          A = N*(1 + N)/2
+    derive geo : B = sum(r^k, k, 0, N)   [1]
+        from    Sums.geometric
+        via     simplify
+          B = sum(r^k, k, 0, N)
+    derive z : C = sum(1/k^3, k, 1, inf)   [1]
+        from    Sums.zeta3
+        via     simplify
+          C = sum(1/k^3, k, 1, inf)
+    derive l : S = x*pi^2/6   [L]
+        from    Sums.lengths
+        via     simplify
+          S = x*pi^2/6
+    derive h : D = 1   [1]
+        from    Sums.half
+        via     simplify
+          D = 1
+    derive renamed : A = sum(k, k, 1, N)   [1]
+        from    Sums.gauss
+        via     instantiate
+          s := A = sum(k, k, 1, N)
+    compute sum(1/k^3, k, 1, inf) = 1.2020569   [1]
+    compute sum(1/(k*(k + 1)), k, 1, 100) = 0.990099   [1]
+  
+  theory Errors
+    dim L
+    var S, x : L
+  cases/calculus/sums.lan:38: error: the bound `x` of `sum` must be dimensionless, but it is [L]
+  cases/calculus/sums.lan:39: error: `sum` counts with a name, as in sum(1/n^2, n, 1, inf), but got `2*k`
+  cases/calculus/sums.lan:40: error: `sum` takes 4 arguments (f, n, a, b), but got 3
+  cases/calculus/sums.lan:41: error: the two sides have different dimensions: `S` is [L] but `sum(1, k, 1, 3)` is [1]
+  
+  theory Integers
+    var n : 1, integer, positive
+    var m : 1, integer
+    var A, B, C : 1
+    law s : A = sin(n*pi)   [1]
+    law c : B = cos(m*pi)   [1]
+    law q : C = sin(m*pi)   [1]
+    derive zero : A = 0   [1]
+        from    Integers.s
+        assumes n a positive integer
+        via     simplify
+          A = 0
+    derive sign : B = (-1)^m   [1]
+        from    Integers.c
+        assumes m an integer
+        via     simplify
+          B = (-1)^m
+    derive also_zero : C = 0   [1]
+        from    Integers.q
+        assumes m an integer
+        via     simplify
+          C = 0
+  
+  theory BadIntegers
+    dim L
+  cases/calculus/sums.lan:65: error: an integer counts, so it is dimensionless, but `q` is [L]
+  cases/calculus/sums.lan:66: error: a vector cannot be `integer`
+  cases/calculus/sums.lan:67: error: a variable cannot be both `integer` and `complex`
+  
+  [1]
+
+Chained dependencies: y(x) with x(t), so derivatives by t follow the chain
+rule; putting θ := ω*t into a law turns h(θ) into h(ω*t).
+
+  $ landau -v cases/calculus/chain.lan
+  theory Bead
+    dim L, T
+    var t : T
+    var x(t) : L
+    var y(x) : L
+    var vy : L/T
+    var ay : L/T^2
+    law vertical : vy = diff(y, t)   [L/T]
+    law accel : ay = diff(diff(y, t), t)   [L/T^2]
+    derive chain : vy = diff(y, x)*diff(x, t)   [L/T]
+        from    Bead.vertical
+        via     simplify
+          vy = diff(y, x)*diff(x, t)
+    derive chain2 : ay = diff(x, t)^2*diff(diff(y, x), x) + diff(y, x)*diff(diff(x, t), t)   [L/T^2]
+        from    Bead.accel
+        via     simplify
+          ay = diff(x, t)^2*diff(diff(y, x), x) + diff(y, x)*diff(diff(x, t), t)
+  
+  theory Pendulum
+    dim L, T
+    var t : T
+    var θ(t) : 1
+    var ω : 1/T, positive
+    var ℓ : L, positive
+    var h(θ) : L
+    var vh : L/T
+    law height : h = -ℓ*cos(θ)   [L]
+    law rate : vh = diff(h, t)   [L/T]
+    derive speed : vh = ℓ*diff(θ, t)*sin(θ)   [L/T]
+        from    Pendulum.height, Pendulum.rate
+        assumes ℓ > 0
+        via     subst, simplify
+          s := vh = diff(-ℓ*cos(θ), t)
+          vh = ℓ*diff(θ, t)*sin(θ)
+    derive steady : vh = ℓ*ω*sin(t*ω)   [L/T]
+        from    Pendulum.height, Pendulum.rate
+        assumes ℓ > 0, ω > 0
+        via     instantiate, simplify
+          s := vh = ℓ*diff(ω*t, t)*sin(ω*t)
+          vh = ℓ*ω*sin(t*ω)
+    derive general : vh = ω*at(diff(h, θ), θ, t*ω)   [L/T]
+        from    Pendulum.rate
+        assumes ω > 0
+        via     instantiate, simplify
+          s := vh = diff(h(ω*t), t)
+          vh = ω*at(diff(h, θ), θ, t*ω)
+  
+  theory NoPath
+    dim L, T
+    var t : T
+    var x : L
+    var y(x) : L
+    var v : L/T
+  cases/calculus/chain.lan:51: error: `diff(y, t)` is always 0, because `y` does not depend on `t`; declare the dependence, e.g. `var y(t, x) : ...`
+  
+  [1]

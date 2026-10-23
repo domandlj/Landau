@@ -75,6 +75,18 @@ export interface DiagramItem extends Base {
   /** angles to show: at the body's center, or at the foot of the plane */
   marks: { label: Rendered; from: [number, number] | null; to: [number, number] | null; at: "center" | "foot" }[];
 }
+/** eigen name: A, or eigen name: K, M for K v = λ M v. */
+export interface EigenItem extends Base {
+  kind: "eigen";
+  name: string;
+  a: Rendered;
+  b: Rendered | null;
+  /** the eigenvalues' dimension: [A], or [K]/[M] */
+  dim: DimRendered;
+  /** each eigenvalue with its multiplicity and eigenvectors (first nonzero entry 1) */
+  values: { value: Rendered; multiplicity: number; vectors: Rendered[] }[];
+}
+
 /** groups name: T from L, g -- the dimensionless groups (Buckingham π). */
 export interface GroupsItem extends Base {
   kind: "groups";
@@ -89,7 +101,8 @@ export interface GroupsItem extends Base {
 }
 export interface UnitsItem extends Base {
   kind: "units";
-  units: { name: string; latex: string; dim: DimRendered; factor: string; base: boolean }[];
+  /** factor: 1000, 1.602176634e-19 or pi/180; factor_latex: the same as LaTeX */
+  units: { name: string; latex: string; dim: DimRendered; factor: string; factor_latex: string; base: boolean }[];
 }
 export interface AliasItem extends Base {
   kind: "alias";
@@ -148,7 +161,7 @@ export interface ErrorItem extends Base {
   theory: string | null;
 }
 
-export type Item = ImportItem | DimItem | UnitsItem | ConstItem | ComputeItem | GroupsItem | SimulateItem | DiagramItem | AliasItem | VarItem | DefItem | LawItem | DeriveItem | ErrorItem;
+export type Item = ImportItem | DimItem | UnitsItem | ConstItem | ComputeItem | GroupsItem | EigenItem | SimulateItem | DiagramItem | AliasItem | VarItem | DefItem | LawItem | DeriveItem | ErrorItem;
 
 export interface Theory {
   name: string;

@@ -13,14 +13,15 @@ const KEYWORDS = new Set([
   "solve", "for", "subst", "into", "simplify", "unfold", "root", "component", "of", "expand", "differentiate", "by",
   "apply", "to", "integrate", "from", "with", "unit", "const", "evaluate", "in", "digits", "compute",
   "approximate", "where", "order", "limit", "as", "numerically", "near", "simulate", "points",
-  "diagram", "body", "force", "toward", "accelerates", "plane", "draw", "mark", "between", "and", "groups",
+  "diagram", "body", "force", "toward", "accelerates", "plane", "draw", "mark", "between", "and", "groups", "eigen",
 ]);
-const ATTRIBUTES = new Set(["positive", "nonzero", "real", "complex", "vector", "position"]);
+const ATTRIBUTES = new Set(["positive", "nonzero", "real", "complex", "integer", "vector", "position", "matrix"]);
 const BUILTINS = new Set([
   "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh",
   "exp", "log", "sqrt", "abs", "conj", "pi", "im",
   "dot", "cross", "norm", "grad", "div", "curl", "lap", "diff", "vec", "integral", "at",
-  "line", "loop", "surface", "volume", "inf",
+  "line", "loop", "surface", "volume", "inf", "sum",
+  "mat", "det", "trace", "inv", "transpose", "identity", "entry",
 ]);
 
 // Mirrors lib/lexer.mll. Identifiers may contain any non-ASCII letter (θ, ψ, ħ).

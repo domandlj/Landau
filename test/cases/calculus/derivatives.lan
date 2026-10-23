@@ -53,6 +53,5 @@ theory Bad
   var t : T
   var x : L
   var y(t) : L
-  var z(y) : L
   law nodep: x = diff(x, t)*t
 end

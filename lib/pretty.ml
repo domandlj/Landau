@@ -75,6 +75,9 @@ let deps_of : (string -> string list) ref = ref (fun _ -> [])
 (* Whether an expression is a vector: F·dr or f dl in a line integral. *)
 let is_vector_expr : (expr -> bool) ref = ref (fun _ -> false)
 
+(* Matrices, shown in bold. Set by the checker. *)
+let is_matrix : (string -> bool) ref = ref (fun _ -> false)
+
 (* Independent variables: the position, and anything a variable depends on. *)
 let independent : (string -> bool) ref = ref (fun _ -> false)
 
@@ -158,8 +161,9 @@ let subscript s =
   flush ();
   Buffer.contents buf
 
-(* x0 -> x_{0}, v_max -> v_{\mathrm{max}}, x' stays a prime; vectors get an arrow *)
-let name ?(vec = false) s =
+(* x0 -> x_{0}, v_max -> v_{\mathrm{max}}, x' stays a prime; vectors get an
+   arrow and matrices are bold *)
+let name ?(vec = false) ?(mat = false) s =
   let n = String.length s in
   let primes = ref n in
   while !primes > 0 && s.[!primes - 1] = '\'' do decr primes done;
@@ -173,7 +177,13 @@ let name ?(vec = false) s =
         if !j > 0 && !j < String.length core then Some (String.sub core 0 !j, String.sub core !j (String.length core - !j))
         else None
   in
-  let sym b = if vec then "\\vec{" ^ symbol b ^ "}" else symbol b in
+  let bold b =
+    (* \mathit inside \boldsymbol would undo the bold: Mm -> \boldsymbol{Mm} *)
+    let t = symbol b and it = "\\mathit{" in
+    let n = String.length it in
+    if String.length t > n && String.sub t 0 n = it then "\\boldsymbol{" ^ String.sub t n (String.length t - n) else "\\boldsymbol{" ^ t ^ "}"
+  in
+  let sym b = if vec then "\\vec{" ^ symbol b ^ "}" else if mat then bold b else symbol b in
   (match split with Some (b, sub) -> sym b ^ "_{" ^ sub ^ "}" | None -> sym core) ^ tail
 
 let tex_fns =
@@ -203,10 +213,14 @@ let call_args args =
 let rec tex vec p e =
   let tex = tex vec in
   let paren q s = if q < p then lparen s else s in
+  let matrix_rows rows =
+    String.concat " \\\\ "
+      (List.map (function Call ("vec", xs) -> String.concat " & " (List.map (tex 0) xs) | r -> tex 0 r) rows)
+  in
   match e with
   | Num q when Q.sign q < 0 -> paren 2 ("-" ^ tex 3 (Num (Q.neg q)))
   | Num q -> if is_int q then Q.to_string q else paren 3 (Printf.sprintf "\\frac{%s}{%s}" (Z.to_string (Q.num q)) (Z.to_string (Q.den q)))
-  | Var x -> name ~vec:(vec x) x
+  | Var x -> name ~vec:(vec x) ~mat:(!is_matrix x) x
   | Quantity (q, u) when Q.sign q < 0 -> paren 2 ("-" ^ tex 3 (Quantity (Q.neg q, u)))
   | Quantity (q, DOne) -> number_latex q
   | Quantity (q, u) -> paren 3 (number_latex q ^ "\\," ^ unit_latex u)
@@ -247,6 +261,20 @@ let rec tex vec p e =
       else n ^ "_{" ^ c ^ "}"
   | Call ("comp", [ a; Num k ]) when is_int k -> lparen (tex 0 a) ^ "_{" ^ component_name (Q.to_int k) ^ "}"
   | Call ("vec", xs) -> "\\begin{pmatrix}" ^ String.concat " \\\\ " (List.map (tex 0) xs) ^ "\\end{pmatrix}"
+  | Call ("mat", rows) -> "\\begin{pmatrix}" ^ matrix_rows rows ^ "\\end{pmatrix}"
+  | Call ("det", [ Call ("mat", rows) ]) -> "\\begin{vmatrix}" ^ matrix_rows rows ^ "\\end{vmatrix}"
+  | Call ("det", [ a ]) -> paren 3 ("\\det " ^ tex 5 a)
+  | Call ("trace", [ a ]) -> paren 3 ("\\operatorname{tr} " ^ tex 5 a)
+  | Call ("inv", [ a ]) -> tex 5 a ^ "^{-1}"
+  | Call ("transpose", [ a ]) -> tex 5 a ^ "^{\\mathsf{T}}"
+  | Call ("identity", [ n ]) -> "\\mathbf{1}_{" ^ tex 0 n ^ "}"
+  | Call ("entry", [ Var v; Num i; Num j ]) when is_int i && is_int j ->
+      (* K.1.2 -> K_{12}; K0 -> K_{0,12} *)
+      let n = name v and ij = Q.to_string i ^ Q.to_string j in
+      let len = String.length n in
+      if len > 0 && n.[len - 1] = '}' && String.contains n '_' then String.sub n 0 (len - 1) ^ "," ^ ij ^ "}"
+      else n ^ "_{" ^ ij ^ "}"
+  | Call ("entry", [ a; Num i; Num j ]) -> lparen (tex 0 a) ^ "_{" ^ Q.to_string i ^ Q.to_string j ^ "}"
   | Call ("diff", [ _; _ ]) ->
       (* diff(diff(f, x), y): collect the variables, innermost first *)
       let rec chain e xs = match e with Call ("diff", [ f; x ]) -> chain f (x :: xs) | f -> (f, xs) in
@@ -265,7 +293,11 @@ let rec tex vec p e =
         | (Var x0 as x) :: _ when List.for_all (( = ) x) xs ->
             known_fns f
             && List.for_all
-                 (fun v -> v = x0 || ((not (!independent v)) && List.for_all (( = ) x0) (!deps_of v)))
+                 (fun v ->
+                   (* what v depends on in the end, stopping at x0: x(θ) with
+                      θ(t) depends on t alone *)
+                   let rec leaves v = if v = x0 || !deps_of v = [] then [ v ] else List.concat_map leaves (!deps_of v) in
+                   v = x0 || if !deps_of v = [] then not (!independent v) else List.for_all (( = ) x0) (leaves v))
                  (vars [] f)
         | _ -> false
       in
@@ -302,6 +334,8 @@ let rec tex vec p e =
   | Call ("integral", [ f; x ]) -> paren 2 ("\\int " ^ tex 2 f ^ "\\,\\mathrm{d}" ^ tex 5 x)
   | Call ("integral", [ f; x; a; b ]) ->
       paren 2 (Printf.sprintf "\\int_{%s}^{%s} %s\\,\\mathrm{d}%s" (tex 0 a) (tex 0 b) (tex 2 f) (tex 5 x))
+  | Call ("sum", [ f; k; a; b ]) ->
+      paren 2 (Printf.sprintf "\\sum_{%s=%s}^{%s} %s" (tex 0 k) (tex 0 a) (tex 0 b) (tex 2 f))
   | Call ((("line" | "loop") as f), [ g; p; s; a; b ]) ->
       (* ∫_C F·dr over the curve p(s), s from a to b *)
       let sign = if f = "loop" then "\\oint" else "\\int" in

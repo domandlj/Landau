@@ -17,7 +17,13 @@ type var_info = {
 
 (* A unit stands for a dimension, possibly scaled: km is L with factor 1000.
    Base units (unit kg : Mass) are what other dimensions are shown in. *)
-type unit_info = { udim : Dim.t; factor : Q.t; base : bool }
+(* A unit's size in base units, q*pi^k: a degree is pi/180 (of a radian). *)
+type scale = { q : Q.t; pi : int }
+
+(* [angle] is the power of the radian a unit carries (rad/s: 1) and [hz] that
+   of the hertz, so that a conversion from rad/s to Hz, which needs a 2π that
+   dimensions cannot see, is caught. *)
+type unit_info = { udim : Dim.t; factor : scale; base : bool; angle : Q.t; hz : Q.t }
 type def_info = { params : string list; body : expr; scheme : Infer.scheme; shapes : Shape.table }
 
 type law_info = {
@@ -87,7 +93,20 @@ let vector_size attrs =
 let is_vector_attrs a = vector_size a <> None
 let is_vector th x = is_vector_attrs (attrs_of th x)
 let has_vectors th = List.exists (fun (_, e) -> is_vector_attrs e.v.attrs) th.vars
-let shape_of_attrs a = match vector_size a with Some n -> Shape.Vector n | None -> Shape.Scalar
+
+(* `matrix(n)`: an n×n matrix *)
+let matrix_size attrs = List.find_map (fun a -> if attr_name a = "matrix" then attr_size a else None) attrs
+let is_matrix_attrs a = matrix_size a <> None
+
+(* a vector or a matrix: not something to differentiate by, order, or count *)
+let not_scalar a = is_vector_attrs a || is_matrix_attrs a
+let kind_name a = if is_matrix_attrs a then "matrix" else "vector"
+
+let shape_of_attrs a =
+  match (vector_size a, matrix_size a) with
+  | Some n, _ -> Shape.Vector n
+  | None, Some n -> Shape.Matrix n
+  | None, None -> Shape.Scalar
 
 let vector_sizes th =
   List.sort_uniq compare (List.filter_map (fun (_, e) -> vector_size e.v.attrs) th.vars)
@@ -115,16 +134,6 @@ let rec eval_dim th = function
   | DDiv (a, b) -> Dim.sub (eval_dim th a) (eval_dim th b)
   | DPow (a, q) -> Dim.scale q (eval_dim th a)
 
-let env th =
-  {
-    Infer.global = (fun x -> Option.map (fun v -> v.vdim) (find_var th x));
-    scheme_of = (fun f -> Option.map (fun d -> d.scheme) (find_def th f));
-    locals = [];
-    position = Option.map (fun (_, v) -> v.vdim) (position th);
-    deps = (fun x -> match find_var th x with Some v -> v.deps | None -> []);
-    unit_dim = (fun u -> eval_dim th u);
-  }
-
 let shape_env th =
   {
     Shape.var_shape = (fun x -> Option.map (fun v -> shape_of_attrs v.attrs) (find_var th x));
@@ -135,6 +144,17 @@ let shape_env th =
   }
 
 let shape th e = try Shape.infer (shape_env th) e with Infer.Error _ -> Shape.S
+
+let env th =
+  {
+    Infer.global = (fun x -> Option.map (fun v -> v.vdim) (find_var th x));
+    scheme_of = (fun f -> Option.map (fun d -> d.scheme) (find_def th f));
+    locals = [];
+    position = Option.map (fun (_, v) -> v.vdim) (position th);
+    deps = (fun x -> match find_var th x with Some v -> v.deps | None -> []);
+    unit_dim = (fun u -> eval_dim th u);
+    matrix_size = (fun e -> match shape th e with Shape.M n -> Some n | _ -> None);
+  }
 
 (* ---- dependencies ---- *)
 
@@ -151,10 +171,14 @@ let cas_deps th x =
       | None -> [ d ])
     (deps_of th base)
 
+(* Does v depend on x, directly or through what it depends on: x(θ) with θ(t)
+   depends on t? *)
+let rec reaches th v x = List.exists (fun d -> d = x || reaches th d x) (deps_of th v)
+
 (* Does [e] depend on the variable [x]? *)
 let rec depends th x e =
   match e with
-  | Var v -> v = x || List.mem x (deps_of th v)
+  | Var v -> v = x || reaches th v x
   | _ -> List.exists (depends th x) (children e)
 
 (* An equation must agree in shape and in dimension. Shapes go first: adding
@@ -166,26 +190,48 @@ let check_eq th q =
 (* q^k for a whole number k *)
 let rec qpow q k = if k = 0 then Q.one else if k < 0 then Q.inv (qpow q (-k)) else Q.mul q (qpow q (k - 1))
 
-(* A unit definition: its dimension and its size in base units. *)
+let unscaled = { q = Q.one; pi = 0 }
+let is_unscaled f = Q.equal f.q Q.one && f.pi = 0
+
+(* The scale as a number: pi stays exact for SymPy. *)
+let scale_expr f = if f.pi = 0 then Num f.q else Mul (Num f.q, Pow (Const "pi", Num (Q.of_int f.pi)))
+
+(* A unit definition: its dimension and its size in base units. `pi` may
+   scale a unit, as in `unit deg = pi/180*rad`. *)
 let rec eval_unit th = function
-  | DOne -> (Dim.one, Q.one)
-  | DNum q -> (Dim.one, q)
+  | DOne -> (Dim.one, unscaled)
+  | DNum q -> (Dim.one, { q; pi = 0 })
+  | DName "pi" when find_unit th "pi" = None -> (Dim.one, { q = Q.one; pi = 1 })
   | DName n -> (
       match (find_unit th n, List.assoc_opt n th.dims) with
       | Some u, _ -> (u.udim, u.factor)
-      | None, Some e -> (e.v, Q.one)
+      | None, Some e -> (e.v, unscaled)
       | None, None -> fail "unknown unit `%s`" n)
   | DMul (a, b) ->
       let da, fa = eval_unit th a and db, fb = eval_unit th b in
-      (Dim.add da db, Q.mul fa fb)
+      (Dim.add da db, { q = Q.mul fa.q fb.q; pi = fa.pi + fb.pi })
   | DDiv (a, b) ->
       let da, fa = eval_unit th a and db, fb = eval_unit th b in
-      (Dim.sub da db, Q.div fa fb)
+      (Dim.sub da db, { q = Q.div fa.q fb.q; pi = fa.pi - fb.pi })
   | DPow (a, q) ->
       let d, f = eval_unit th a in
-      if Q.equal f Q.one then (Dim.scale q d, f)
-      else if Z.equal (Q.den q) Z.one then (Dim.scale q d, qpow f (Q.to_int q))
+      if is_unscaled f then (Dim.scale q d, f)
+      else if Z.equal (Q.den q) Z.one then (Dim.scale q d, { q = qpow f.q (Q.to_int q); pi = f.pi * Q.to_int q })
       else fail "a scaled unit cannot be raised to the fractional power %s" (Q.to_string q)
+
+(* The powers of the radian and of the hertz in a unit expression. *)
+let rec angle_hz th = function
+  | DOne | DNum _ -> (Q.zero, Q.zero)
+  | DName n -> ( match find_unit th n with Some u -> (u.angle, u.hz) | None -> (Q.zero, Q.zero))
+  | DMul (a, b) ->
+      let (a1, h1), (a2, h2) = (angle_hz th a, angle_hz th b) in
+      (Q.add a1 a2, Q.add h1 h2)
+  | DDiv (a, b) ->
+      let (a1, h1), (a2, h2) = (angle_hz th a, angle_hz th b) in
+      (Q.sub a1 a2, Q.sub h1 h2)
+  | DPow (a, q) ->
+      let a1, h1 = angle_hz th a in
+      (Q.mul q a1, Q.mul q h1)
 
 let rec mentions_unit th = function
   | DName n -> find_unit th n <> None
@@ -216,7 +262,7 @@ let auto_units th (d : Dim.t) =
       let named =
         List.filter_map
           (fun (n, e) ->
-            if e.v.base || not (Q.equal e.v.factor Q.one) then None
+            if e.v.base || not (is_unscaled e.v.factor) then None
             else Option.map (fun rest -> Dim.add (Dim.base n) rest) (in_base (Dim.sub d e.v.udim)))
           th.units
       in
@@ -236,13 +282,20 @@ let rec subst_expr ?(deps = fun _ -> []) m e =
     | Some _ -> fail "cannot replace `%s` in `%s`: it is the variable %s" x (Pretty.expr e) what
   in
   match e with
-  | Var x -> ( match List.assoc_opt x m with Some r -> r | None -> e)
+  | Var x when List.mem_assoc x m -> List.assoc x m
+  | Var x when List.exists (fun d -> List.mem_assoc d m) (deps x) ->
+      (* x(θ) with θ replaced by ω*t is x(ω*t) *)
+      Call (x, List.map (fun d -> go (Var d)) (deps x))
+  | Var _ -> e
   | Call ("diff", [ _; (Var x | Call ("comp", [ Var x; _ ])) ]) ->
       bound x "being differentiated";
       map_children go e
   | Call ("integral", _ :: (Var x | Call ("comp", [ Var x; _ ])) :: _) ->
       bound x "of integration";
       map_children go e
+  | Call ("sum", [ f; (Var k as i); a; b ]) ->
+      (* the index is the sum's own: a variable of the same name outside is another *)
+      Call ("sum", [ subst_expr ~deps (List.remove_assoc k m) f; i; go a; go b ])
   | Call ("at", [ _; (Var x | Call ("comp", [ Var x; _ ])); _ ]) ->
       bound x "being set";
       map_children go e
@@ -275,6 +328,15 @@ and def_mentions th names f =
   | Some d -> mentions th (List.filter (fun n -> not (List.mem n d.params)) names) d.body
 
 (* Trivial clean-ups after substitution; no CAS involved. *)
+(* Is s a plain number-valued factor, safe to move into a vec or mat? Not if
+   it involves a vector or a matrix: A*vec(1, 2) is not vec(A*1, A*2). Uses
+   the printer's hooks, which the checker sets for the current theory. *)
+let rec plain s =
+  match s with
+  | Var v -> !Pretty.vector_size v = None && not (!Pretty.is_matrix v)
+  | Call (("vec" | "mat" | "identity" | "inv" | "transpose" | "cross" | "grad" | "curl"), _) -> false
+  | _ -> List.for_all plain (children s)
+
 let rec tidy e =
   let zero q = Q.equal q Q.zero and one q = Q.equal q Q.one in
   match map_children tidy e with
@@ -308,9 +370,21 @@ let rec tidy e =
   | Add (Call ("vec", xs), Call ("vec", ys)) when List.length xs = List.length ys -> tidy (Call ("vec", List.map2 (fun x y -> Add (x, y)) xs ys))
   | Sub (Call ("vec", xs), Call ("vec", ys)) when List.length xs = List.length ys -> tidy (Call ("vec", List.map2 (fun x y -> Sub (x, y)) xs ys))
   | Neg (Call ("vec", xs)) -> tidy (Call ("vec", List.map (fun x -> Neg x) xs))
-  | Mul (Call ("vec", xs), s) -> tidy (Call ("vec", List.map (fun x -> Mul (x, s)) xs))
-  | Mul (s, Call ("vec", xs)) -> tidy (Call ("vec", List.map (fun x -> Mul (s, x)) xs))
+  | Mul (Call ("vec", xs), s) when plain s -> tidy (Call ("vec", List.map (fun x -> Mul (x, s)) xs))
+  | Mul (s, Call ("vec", xs)) when plain s -> tidy (Call ("vec", List.map (fun x -> Mul (s, x)) xs))
   | Div (Call ("vec", xs), s) -> tidy (Call ("vec", List.map (fun x -> Div (x, s)) xs))
+  (* and on explicit matrices row by row, which the vector rules then finish *)
+  | Add (Call ("mat", xs), Call ("mat", ys)) when List.length xs = List.length ys -> tidy (Call ("mat", List.map2 (fun x y -> Add (x, y)) xs ys))
+  | Sub (Call ("mat", xs), Call ("mat", ys)) when List.length xs = List.length ys -> tidy (Call ("mat", List.map2 (fun x y -> Sub (x, y)) xs ys))
+  | Neg (Call ("mat", xs)) -> tidy (Call ("mat", List.map (fun x -> Neg x) xs))
+  | Mul (Call ("mat", xs), s) when plain s -> tidy (Call ("mat", List.map (fun x -> Mul (x, s)) xs))
+  | Mul (s, Call ("mat", xs)) when plain s -> tidy (Call ("mat", List.map (fun x -> Mul (s, x)) xs))
+  | Div (Call ("mat", xs), s) -> tidy (Call ("mat", List.map (fun x -> Div (x, s)) xs))
+  | Call ("entry", [ Call ("mat", rows); Num i; Num j ]) -> (
+      match List.nth_opt rows (Q.to_int i - 1) with
+      | Some (Call ("vec", xs)) -> List.nth xs (Q.to_int j - 1)
+      | _ -> Call ("entry", [ Call ("mat", rows); Num i; Num j ]))
+  | Call ("mat", rows) when List.for_all (function Num z -> zero z | _ -> false) rows -> Num Q.zero
   | e' -> e'
 
 (* Write products the physicist's way, scalars first: q*E rather than E*q. *)
@@ -337,6 +411,39 @@ let cyclic k = match k with 1 -> (2, 3) | 2 -> (3, 1) | _ -> (1, 2)
 
 let position_var th = match position th with Some (x, _) -> Var x | None -> fail "no position vector is declared"
 
+let msize th e = match shape th e with Shape.M n -> n | _ -> 0
+let is_matrix th e = msize th e > 0
+
+(* Entry (i, j) of a matrix expression, pushed inside as far as it goes:
+   (A*B)_ij = Σ_k A_ik B_kj, transpose(A)_ij = A_ji, identity(n)_ij = δ_ij.
+   An inverse is worked out by SymPy from the entries. *)
+let rec entry th i j e =
+  let en = entry th in
+  match e with
+  | Num _ -> e
+  | Var _ -> Call ("entry", [ e; num i; num j ])
+  | Neg a -> Neg (en i j a)
+  | Add (a, b) -> Add (en i j a, en i j b)
+  | Sub (a, b) -> Sub (en i j a, en i j b)
+  | Mul (a, b) when is_matrix th a && is_matrix th b ->
+      sum (List.init (msize th a) (fun k -> Mul (en i (k + 1) a, en (k + 1) j b)))
+  | Mul (a, b) when is_matrix th a -> Mul (en i j a, b)
+  | Mul (a, b) -> Mul (a, en i j b)
+  | Div (a, b) -> Div (en i j a, b)
+  | Call ("mat", rows) -> ( match List.nth rows (i - 1) with Call ("vec", xs) -> List.nth xs (j - 1) | r -> comp r j)
+  | Call ("identity", _) -> num (if i = j then 1 else 0)
+  | Call ("transpose", [ a ]) -> en j i a
+  | Call ("inv", [ a ]) -> List.nth (List.nth (Cas.inv ~attrs_of:(attrs_of th) ~deps_of:(cas_deps th) (entries th a)) (i - 1)) (j - 1)
+  | Call ("diff", [ f; x ]) -> Call ("diff", [ en i j f; x ])
+  | _ -> Call ("entry", [ e; num i; num j ])
+
+and entries th a =
+  let n = msize th a in
+  List.init n (fun i -> List.init n (fun j -> entry th (i + 1) (j + 1) a))
+
+(* The matrix with these entries, written out: mat(vec(..), vec(..)) *)
+let mat_of rows = Call ("mat", List.map (fun r -> Call ("vec", r)) rows)
+
 (* Component k of a vector expression, pushed inside as far as it goes:
    (a + b).x = a.x + b.x, (s*v).x = s*v.x, vec(a, b, c).y = b, ... *)
 let rec component th k e =
@@ -347,6 +454,9 @@ let rec component th k e =
   | Neg a -> Neg (c k a)
   | Add (a, b) -> Add (c k a, c k b)
   | Sub (a, b) -> Sub (c k a, c k b)
+  | Mul (a, b) when is_matrix th a ->
+      (* (A v)_k = Σ_j A_kj v_j *)
+      sum (List.init (msize th a) (fun j -> Mul (entry th k (j + 1) a, c (j + 1) b)))
   | Mul (a, b) -> ( match shape th a with Shape.V _ -> Mul (c k a, b) | _ -> Mul (a, c k b))
   | Div (a, b) -> Div (c k a, b)
   | Call ("vec", xs) -> List.nth xs (k - 1)
@@ -376,6 +486,14 @@ let rec expand ?(only_concrete = false) th e =
   let ok args = (not only_concrete) || not (List.exists whole args) in
   let comps n f = List.init n (fun i -> f (i + 1)) in
   match map_children (expand ~only_concrete th) e with
+  (* Matrices are always written out: SymPy's symbols commute, so it would
+     take A*B for B*A. *)
+  | Call ("det", [ a ]) when is_matrix th a -> Cas.det ~attrs_of:(attrs_of th) ~deps_of:(cas_deps th) (entries th a)
+  | Call ("trace", [ a ]) when is_matrix th a -> sum (List.init (msize th a) (fun i -> entry th (i + 1) (i + 1) a))
+  | Call ("entry", [ a; Num i; Num j ]) when (match a with Var _ -> false | _ -> true) -> entry th (Q.to_int i) (Q.to_int j) a
+  | Mul (a, b) when is_matrix th a && size th b > 0 -> Call ("vec", comps (size th b) (fun k -> component th k e))
+  | (Mul (a, b)) when is_matrix th a && is_matrix th b -> mat_of (entries th e)
+  | Call (("inv" | "transpose" | "identity"), _) when is_matrix th e -> mat_of (entries th e)
   | Call ("dot", [ a; b ]) when ok [ a; b ] && size th a > 0 ->
       sum (comps (size th a) (fun k -> Mul (component th k a, component th k b)))
   | Call ("norm", [ a ]) when ok [ a ] && size th a > 0 ->
@@ -489,7 +607,13 @@ let assumptions th q =
   List.concat_map
     (fun x ->
       let a = attrs_of th x in
-      if List.mem "positive" a then [ x ^ " > 0" ] else if List.mem "nonzero" a then [ x ^ " ≠ 0" ] else [])
+      match (List.mem "integer" a, List.mem "positive" a, List.mem "nonzero" a) with
+      | true, true, _ -> [ x ^ " a positive integer" ]
+      | true, false, true -> [ x ^ " an integer ≠ 0" ]
+      | true, false, false -> [ x ^ " an integer" ]
+      | false, true, _ -> [ x ^ " > 0" ]
+      | false, false, true -> [ x ^ " ≠ 0" ]
+      | false, false, false -> [])
     (vars (vars [] q.lhs) q.rhs)
 
 (* Rules for curl, div, grad and lap, so that their results line up with laws
@@ -529,6 +653,7 @@ let free_vars th e =
     match e with
     | Var x -> if List.mem x bound then [] else [ x ]
     | Call ("integral", f :: x :: rest) -> go (name x @ bound) f @ List.concat_map (go bound) rest
+    | Call ("sum", [ f; Var k; a; b ]) -> go (k :: bound) f @ go bound a @ go bound b
     | Call ("at", [ e; x; a ]) -> go (name x @ bound) e @ go bound a
     | Call (("line" | "loop" | "surface" | "volume"), f :: q :: rest) ->
         let params = List.concat (List.filteri (fun i _ -> i mod 3 = 0) (List.map name rest)) in
@@ -541,7 +666,9 @@ let free_vars th e =
 (* Quantities and constants as plain numbers in base units: 3 [km] is 3000. *)
 let rec in_base_units th e =
   match e with
-  | Quantity (q, u) -> Num (Q.mul q (snd (eval_unit th u)))
+  | Quantity (q, u) ->
+      let f = snd (eval_unit th u) in
+      scale_expr { f with q = Q.mul q f.q }
   | Var x -> (
       match find_var th x with Some { value = Some (q, u); _ } -> in_base_units th (Quantity (q, u)) | _ -> e)
   | _ -> map_children (in_base_units th) e
@@ -635,6 +762,17 @@ let rec check_derivatives th e =
 let plural n word = sprintf "%d %s%s" n word (if n = 1 then "" else "s")
 
 (* ---- numeric results, for `evaluate` and `compute` ---- *)
+
+(* ---- eigenvalues ---- *)
+
+(* eigen name: A, or eigen name: K, M for K v = λ M v *)
+type eigened = {
+  eigname : string;
+  ea : expr;
+  eb : expr option;
+  ldim : Dim.t; (* the eigenvalues': [A], or [K]/[M] *)
+  pairs : (expr * int * expr list list) list; (* λ, its multiplicity, its eigenvectors *)
+}
 
 (* ---- dimensionless groups ---- *)
 
@@ -730,6 +868,33 @@ let groups th name target xs =
   in
   { gname = name; target; gvars = xs; groups = List.map (fun v -> monomial (pairs v)) basis; solved; absent }
 
+(* A matrix variable stands for the law that defines it, K = mat(...), so
+   that `eigen modes: K, M` needs no copy of the matrices. *)
+let defined_matrices th e =
+  let rec go e =
+    match e with
+    | Var x when is_matrix_attrs (attrs_of th x) -> (
+        match List.find_opt (fun (_, l) -> l.v.eq.lhs = Var x) th.laws with
+        | Some (_, l) -> go l.v.eq.rhs
+        | None -> e)
+    | _ -> map_children go e
+  in
+  go e
+
+let eigen th name a b =
+  let size e =
+    match Shape.infer (shape_env th) e with
+    | Shape.M n -> n
+    | s -> fail "`eigen` needs a square matrix, but `%s` is a %s" (Pretty.expr e) (Shape.s_name s)
+  in
+  let n = size a in
+  Option.iter (fun b -> if size b <> n then fail "`%s` and `%s` must be the same size" (Pretty.expr a) (Pretty.expr b)) b;
+  let dim e = Infer.check_eq (env th) { lhs = e; rhs = e } in
+  let ldim = match b with Some b -> Dim.sub (dim a) (dim b) | None -> dim a in
+  let rows e = entries th (tidy (prepare th (defined_matrices th e))) in
+  let pairs = Cas.eigen ~attrs_of:(attrs_of th) ~deps_of:(cas_deps th) (rows a) (Option.map rows b) in
+  { eigname = name; ea = a; eb = b; ldim; pairs = List.map (fun (l, m, vs) -> (tidy l, m, List.map (List.map tidy) vs)) pairs }
+
 let check_digits digits =
   let d = Option.value digits ~default:6 in
   if d < 1 || d > 30 then fail "digits must be between 1 and 30";
@@ -763,9 +928,43 @@ let parse_number s =
 (* The number [e] is in base units, which must need no unknowns. *)
 let base_number th e = Q.to_string (parse_number (Cas.evaluate ~digits:20 (in_base_units th e)))
 
+(* A bare number for a variable declared in a scaled dimensionless unit, as
+   30 for an angle in degrees, is read in base units (30 rad), which is not
+   what anyone means: ask for the unit. [write] shows the fix for a value. *)
+let check_bare th x e write =
+  let rec bare = function Num q -> Some q | Neg a -> Option.map Q.neg (bare a) | _ -> None in
+  match (bare e, Option.bind (find_var th x) (fun v -> v.vunit)) with
+  | Some q, Some u when not (Q.equal q Q.zero) ->
+      let _, f = eval_unit th u and angle, _ = angle_hz th u in
+      if not (is_unscaled f) then
+        fail "`%s` is declared in %s: write `%s`%s" x (Pretty.dexpr_to_string u)
+          (write (Pretty.expr (Quantity (q, u))))
+          (if Q.equal angle Q.zero then "" else sprintf " (a bare %s would be %s rad)" (Pretty.expr e) (Pretty.expr e))
+  | _ -> ()
+
+(* Radians and cycles are both dimensionless, so 3 rad/s and 3 Hz look alike
+   to the dimensions, but 1 Hz is 2π rad/s. A value given in one cannot be
+   shown in the other without that 2π, so say so rather than give a number. *)
+let check_cycles th e u =
+  let source =
+    match e with
+    | Quantity (_, su) -> Some su
+    | Var x -> Option.bind (find_var th x) (fun v -> Option.map snd v.value)
+    | _ -> None
+  in
+  match source with
+  | Some su ->
+      let (a1, h1), (a2, h2) = (angle_hz th su, angle_hz th u) in
+      if (not (Q.equal a1 a2)) && not (Q.equal h1 h2) then
+        let fix = if Q.gt h2 h1 then sprintf "%s/(2*pi)" else sprintf "2*pi*%s" in
+        fail "`%s` cannot be given in %s without a factor 2π: Hz counts cycles, and a cycle is 2π rad. Write `%s` in %s"
+          (Pretty.expr e) (Pretty.dexpr_to_string u) (fix (Pretty.expr e)) (Pretty.dexpr_to_string u)
+  | None -> ()
+
 (* The value of [e], which has no unknowns left, as a quantity in unit u. *)
 let numeric th ~digits e (u, f) =
-  Quantity (parse_number (Cas.evaluate ~digits (Div (in_base_units th e, Num f))), u)
+  check_cycles th e u;
+  Quantity (parse_number (Cas.evaluate ~digits (Div (in_base_units th e, scale_expr f))), u)
 
 let describe = function
   | Ref (None, n) -> n
@@ -806,7 +1005,8 @@ let rec eval th locals s =
           let de = Infer.infer st (env th) e in
           Infer.unify st de vi.vdim (fun de dx ->
               sprintf "cannot put `%s` [%s] in place of `%s` [%s]" (Pretty.expr e) (Dim.to_string de) x
-                (Dim.to_string dx)))
+                (Dim.to_string dx));
+          check_bare th x e (fun v -> x ^ " := " ^ v))
         subs;
       let names = List.map fst subs in
       let f e = tidy (subst_expr ~deps:(deps_of th) subs (unfold th (def_mentions th names) e)) in
@@ -911,7 +1111,9 @@ let rec eval th locals s =
             let q = map_eq (prepare th) v.veq in
             match snd (check_eq th q) with
             | Shape.Scalar -> [ q ]
-            | Shape.Vector n -> List.init n (fun i -> map_eq (fun e -> tidy (component th (i + 1) e)) q))
+            | Shape.Vector n -> List.init n (fun i -> map_eq (fun e -> tidy (component th (i + 1) e)) q)
+            | Shape.Matrix n ->
+                List.concat (List.init n (fun i -> List.init n (fun j -> map_eq (fun e -> tidy (entry th (i + 1) (j + 1) e)) q))))
           vs
       in
       List.iter
@@ -971,7 +1173,7 @@ let rec eval th locals s =
       let v = eval th locals s in
       (match find_var th x with
       | None -> fail "`%s` is not a declared variable" x
-      | Some vi when is_vector_attrs vi.attrs -> fail "cannot integrate over the vector `%s`" x
+      | Some vi when not_scalar vi.attrs -> fail "cannot integrate over the vector `%s`" x
       | Some _ -> ());
       { v with veq = map_eq (fun e -> Call ("integral", [ unfold th (fun _ -> true) e; Var x; a; b ])) v.veq }
   | Simplify s ->
@@ -997,13 +1199,14 @@ let rec eval th locals s =
       let q = map_eq (unfold th (fun _ -> true)) v.veq in
       match snd (check_eq th q) with
       | Shape.Scalar -> fail "`component` needs a vector equation, but `%s` is scalar" (Pretty.eq q)
+      | Shape.Matrix _ -> fail "`%s` is a matrix equation: multiply it by a vector, or use entry(..., i, j)" (Pretty.eq q)
       | Shape.Vector n when k > n -> fail "a %d-vector has no component %s" n (component_name k)
       | Shape.Vector _ -> { v with veq = map_eq (fun e -> tidy (component th k e)) q })
   | Differentiate (s, x) ->
       let v = eval th locals s in
       (match find_var th x with
       | None -> fail "`%s` is not a declared variable" x
-      | Some vi when is_vector_attrs vi.attrs -> fail "cannot differentiate by the vector `%s`; use one of its components" x
+      | Some vi when not_scalar vi.attrs -> fail "cannot differentiate by the vector `%s`; use one of its components" x
       | Some _ -> ());
       let q = map_eq (unfold th (fun _ -> true)) v.veq in
       if not (depends th x q.lhs || depends th x q.rhs) then
@@ -1047,10 +1250,13 @@ let rec eval th locals s =
       let v = eval th locals s in
       let digits = check_digits digits in
       let vi = check_var th x in
-      if is_vector_attrs vi.attrs then fail "solve numerically for a component, not the vector `%s`" x;
+      if not_scalar vi.attrs then fail "solve numerically for a component, not the vector `%s`" x;
       if vi.deps <> [] then fail "`%s` is a function of %s; use `simulate` for differential equations" x (String.concat ", " vi.deps);
       let q = map_eq (prepare th) v.veq in
-      (match snd (check_eq th q) with Shape.Vector _ -> fail "take a component first" | Shape.Scalar -> ());
+      (match snd (check_eq th q) with
+      | Shape.Vector _ -> fail "take a component first"
+      | Shape.Matrix _ -> fail "solve a matrix equation one entry at a time"
+      | Shape.Scalar -> ());
       ignore (check_eq th { lhs = Var x; rhs = guess });
       let e = tidy (Sub (in_base_units th q.lhs, in_base_units th q.rhs)) in
       (match List.filter (fun y -> y <> x) (free_vars th e) with
@@ -1076,7 +1282,7 @@ let rec eval th locals s =
       List.iter
         (fun (x, b) ->
           let vi = check_var th x in
-          if is_vector_attrs vi.attrs then fail "`%s` is a vector; say which component is small, or use its norm" x;
+          if not_scalar vi.attrs then fail "`%s` is a vector; say which component is small, or use its norm" x;
           if List.mem x (vars [] b) then fail "in `%s << %s`, the scale cannot depend on `%s`" x (Pretty.expr b) x;
           let r = Div (Var x, b) in
           let d = Infer.check_eq (env th) { lhs = r; rhs = r } in
@@ -1113,7 +1319,7 @@ let rec eval th locals s =
   | Limit (s, x, point) ->
       let v = eval th locals s in
       let vi = check_var th x in
-      if is_vector_attrs vi.attrs then fail "cannot take a limit in the vector `%s`" x;
+      if not_scalar vi.attrs then fail "cannot take a limit in the vector `%s`" x;
       ignore (check_eq th { lhs = Var x; rhs = point });
       (* a lone x(t) goes to its value there, v(inf); anything else to SymPy *)
       let lim e =
@@ -1152,7 +1358,7 @@ let run_derive th steps =
 
 (* ---- declarations ---- *)
 
-let attributes = [ "positive"; "nonzero"; "real"; "complex"; "vector"; "position" ]
+let attributes = [ "positive"; "nonzero"; "real"; "complex"; "integer"; "vector"; "position"; "matrix" ]
 
 (* A theory has at most one position vector, also counting imported ones. *)
 let check_position th =
@@ -1193,6 +1399,7 @@ type shown =
   | SCompute of string option * expr * expr * Dim.t (* the expression, its value as a quantity *)
   | SSimulate of simulated
   | SGroups of grouped
+  | SEigen of eigened
   | SDiagram of drawn
   | SAlias of string * Dim.t
   | SVar of (string * string list) list * Dim.t * string list * dexpr option (* the unit, if declared in one *)
@@ -1312,6 +1519,7 @@ let rec process theories th d =
       SDim ns
   | Simulate sim -> SSimulate (simulate theories th sim)
   | Groups (name, target, xs) -> SGroups (groups th name target xs)
+  | Eigen (name, a, b) -> SEigen (eigen th name a b)
   | Diagram (name, items) ->
       let dg = diagram th name items in
       if List.mem_assoc name th.laws then fail "law `%s` is already defined" name;
@@ -1321,6 +1529,7 @@ let rec process theories th d =
       let digits = check_digits digits in
       (match Shape.infer (shape_env th) e with
       | Shape.V _ -> fail "`compute` gives one number; take a component, as in `compute F.x`"
+      | Shape.M _ -> fail "`compute` gives one number; take an entry, as in `compute entry(A, 1, 2)`, or det(A)"
       | _ -> ());
       let d = Infer.check_eq (env th) { lhs = e; rhs = e } in
       let d = if Dim.vars d <> [] then Dim.one else d in
@@ -1330,6 +1539,8 @@ let rec process theories th d =
       | xs ->
           fail "give values for %s: write quantities such as `2 [kg]`, or declare constants with `const`"
             (String.concat ", " (List.map (fun x -> "`" ^ x ^ "`") xs)));
+      (* a lone dimensionless quantity keeps its unit: 45 [deg] stays in degrees *)
+      let unit = match (unit, e) with None, Quantity (_, u) when Dim.is_one d -> Some u | _ -> unit in
       let value = numeric th ~digits p (result_unit th d ~asked:unit ~declared:None ~statement:"compute") in
       Option.iter
         (fun n ->
@@ -1365,11 +1576,14 @@ let rec process theories th d =
                   fail "`%s` already has the base unit `%s`; define `%s` from it with its size, as in `unit %s = k*%s`" b
                     other n n other
               | None -> ());
-              { udim = d; factor = Q.one; base = true }
+              { udim = d; factor = unscaled; base = true; angle = Q.zero; hz = Q.zero }
           | UBase _ -> fail "a base unit is declared for a base dimension, as in `unit m : Length`"
           | UDerived de ->
               let udim, factor = eval_unit th de in
-              { udim; factor; base = false }
+              (* the radian and the hertz are where angles and cycles start *)
+              let angle, hz = angle_hz th de in
+              let angle = if n = "rad" then Q.one else angle and hz = if n = "Hz" then Q.one else hz in
+              { udim; factor; base = false; angle; hz }
         in
         Dim.register n;
         th.units <- add_entry "unit" never th.units n { origin; v = info };
@@ -1389,13 +1603,16 @@ let rec process theories th d =
           | ("vector" | "position"), Some n when n >= 1 -> ()
           | ("vector" | "position"), None when not (String.contains a '(') -> ()
           | ("vector" | "position"), _ -> fail "the size in `%s` must be a whole number, at least 1" a
+          | "matrix", Some n when n >= 2 -> ()
+          | "matrix", _ -> fail "a matrix needs its size, a whole number of at least 2: `matrix(2)` is 2×2"
           | n, _ when String.contains a '(' -> fail "`%s` takes no size" n
           | _ -> ())
         attrs;
-      if is_vector_attrs attrs then
+      if not_scalar attrs then
         List.iter
-          (fun a -> if List.mem a [ "positive"; "nonzero" ] then fail "a vector cannot be `%s` (only scalars are ordered)" a)
+          (fun a -> if List.mem a [ "positive"; "nonzero" ] then fail "a %s cannot be `%s` (only scalars are ordered)" (kind_name attrs) a)
           attrs;
+      if is_vector_attrs attrs && is_matrix_attrs attrs then fail "a variable is a vector or a matrix, not both";
       if is_position attrs then (
         match Option.to_list (Option.map fst (position th)) @ List.map fst ns with
         | a :: b :: _ -> fail "a theory can have only one position vector, but `%s` and `%s` both are" a b
@@ -1407,11 +1624,17 @@ let rec process theories th d =
               if d = n then fail "`%s` cannot depend on itself" n;
               match find_var th d with
               | None -> fail "`%s` depends on `%s`, which is not declared yet" n d
-              | Some dv when dv.deps <> [] -> fail "`%s` can only depend on independent variables, but `%s` itself depends on %s" n d (String.concat ", " dv.deps)
               | Some _ -> ())
             deps)
         ns;
       let vdim = eval_dim th de in
+      (* a count, like the n of a level E_n: SymPy then knows sin(n*pi) = 0 *)
+      if List.mem "integer" attrs then (
+        if not_scalar attrs then fail "a %s cannot be `integer`" (kind_name attrs);
+        if List.mem "complex" attrs then fail "a variable cannot be both `integer` and `complex`";
+        if not (Dim.is_one vdim) then
+          fail "an integer counts, so it is dimensionless, but `%s` is [%s]" (String.concat ", " (List.map fst ns))
+            (Dim.to_string vdim));
       let vunit = if mentions_unit th de then Some de else None in
       List.iter
         (fun (n, deps) -> th.vars <- add_entry "variable" never th.vars n { origin; v = { vdim; attrs; deps; vunit; value = None } })
@@ -1499,11 +1722,11 @@ and load_module theories file =
 and simulate _theories th sim =
   let t = sim.over in
   let tv = check_var th t in
-  if is_vector_attrs tv.attrs || tv.deps <> [] then fail "`%s` must be a plain scalar variable to integrate over" t;
+  if not_scalar tv.attrs || tv.deps <> [] then fail "`%s` must be a plain scalar variable to integrate over" t;
   List.iter
     (fun x ->
       let xv = check_var th x in
-      if is_vector_attrs xv.attrs then fail "simulate the components of `%s`, declared as separate scalars" x;
+      if not_scalar xv.attrs then fail "simulate the components of `%s`, declared as separate scalars" x;
       if xv.deps <> [ t ] then fail "`%s` must depend on %s alone: declare it as `var %s(%s) : ...`" x t x t)
     sim.unknowns;
   let laws = List.map (eval th []) sim.laws in
@@ -1513,7 +1736,9 @@ and simulate _theories th sim =
         let q = map_eq (prepare th) v.veq in
         match snd (check_eq th q) with
         | Shape.Scalar -> [ q ]
-        | Shape.Vector n -> List.init n (fun i -> map_eq (fun e -> tidy (component th (i + 1) e)) q))
+        | Shape.Vector n -> List.init n (fun i -> map_eq (fun e -> tidy (component th (i + 1) e)) q)
+        | Shape.Matrix n ->
+            List.concat (List.init n (fun i -> List.init n (fun j -> map_eq (fun e -> tidy (entry th (i + 1) (j + 1) e)) q))))
       laws
   in
   let numeric_eqs = List.map (fun q -> tidy (Sub (in_base_units th q.lhs, in_base_units th q.rhs))) equations in
@@ -1557,6 +1782,7 @@ and simulate _theories th sim =
         in
         if k >= List.assoc x orders then
           fail "`%s` is not needed: %s appears differentiated at most %d time(s)" (Pretty.eq ic) x (List.assoc x orders);
+        if k = 0 then check_bare th x ic.rhs (fun v -> Pretty.expr ic.lhs ^ " = " ^ v);
         (x, k, base_number th ic.rhs))
       sim.initial
   in
@@ -1578,7 +1804,7 @@ and simulate _theories th sim =
   (* show each quantity in its unit: its declared one, or one picked for it *)
   let shown name (vi : var_info) values =
     let u, f = result_unit th vi.vdim ~asked:None ~declared:vi.vunit ~statement:"simulate" in
-    let f = Q.to_float f in
+    let f = Q.to_float f.q *. (Float.pi ** float_of_int f.pi) in
     (name, u, vi.vdim, List.map (fun v -> v /. f) values)
   in
   let tname, tu, _, times = shown t tv r.times in
@@ -1739,16 +1965,37 @@ and builtin theories n =
 (* An equation like 0 = 0 has every dimension: its dimension is a free variable. *)
 let law_dim d = if Dim.vars d <> [] then "any" else Dim.to_string d
 
-let dim_shape (d, s) = match s with Shape.Vector _ -> Shape.to_string s ^ " " ^ law_dim d | Shape.Scalar -> law_dim d
+let dim_shape (d, s) = match s with Shape.Vector _ | Shape.Matrix _ -> Shape.to_string s ^ " " ^ law_dim d | Shape.Scalar -> law_dim d
 
 (* A derivation that ends in x = x proves an identity. *)
 let identity q = q.lhs = q.rhs
 
 (* A scale factor for reading: 0.3048 and 1.602176634e-19 rather than the
    exact fractions they are stored as. *)
-let factor_string q =
+let number_string q =
   if Z.equal (Q.den q) Z.one && Q.lt (Q.abs q) (Q.of_int 1_000_000_000) then Q.to_string q
   else sprintf "%.10g" (Q.to_float q)
+
+(* With pi exact: pi/180, 2*pi *)
+let factor_parts f =
+  let pis = if abs f.pi = 1 then "pi" else sprintf "pi^%d" (abs f.pi) in
+  let n = Q.num f.q and d = Q.den f.q in
+  let times a b = if Z.equal a Z.one then b else Z.to_string a ^ "*" ^ b in
+  if f.pi > 0 then (times n pis, if Z.equal d Z.one then None else Some (Z.to_string d))
+  else (Z.to_string n, Some (times d pis))
+
+let factor_string f =
+  if f.pi = 0 then number_string f.q
+  else match factor_parts f with top, None -> top | top, Some bottom -> top ^ "/" ^ bottom
+
+let factor_latex f =
+  if f.pi = 0 then number_string f.q
+  else
+    (* the parts have only digits, pi, ^ and *: pi -> \pi, * -> a thin space *)
+    let tex s =
+      String.concat "" (List.map (function "*" -> "\\," | "p" -> "\\" ^ "p" | c -> c) (List.init (String.length s) (fun i -> String.make 1 s.[i])))
+    in
+    match factor_parts f with top, None -> tex top | top, Some bottom -> sprintf "\\frac{%s}{%s}" (tex top) (tex bottom)
 
 let text_lines verbose = function
   | SImport n -> [ sprintf "  import %s" n ]
@@ -1759,6 +2006,15 @@ let text_lines verbose = function
       let dir = function Some (x, y) -> sprintf "(%.3g, %.3g)" x y | None -> "(not drawn)" in
       sprintf "  diagram %s : %s   [%s]" dg.dname (Pretty.eq dg.law) (dim_shape dg.law_dim)
       :: List.map (fun (n, m, d) -> sprintf "      force %s = %s toward %s" n (Pretty.expr m) (dir d)) dg.arrows
+  | SEigen e ->
+      sprintf "  eigen %s : %s%s" e.eigname (Pretty.expr e.ea) (match e.eb with Some b -> ", " ^ Pretty.expr b | None -> "")
+      :: List.concat
+           (List.mapi
+              (fun i (l, m, vs) ->
+                sprintf "      λ%d = %s   [%s]%s" (i + 1) (Pretty.expr l) (Dim.to_string e.ldim)
+                  (if m > 1 then sprintf "   (%d times)" m else "")
+                :: List.map (fun v -> sprintf "          v = %s" (Pretty.expr (Call ("vec", v)))) vs)
+              e.pairs)
   | SGroups g ->
       sprintf "  groups %s : %s%s" g.gname
         (match g.target with Some t -> t ^ " from " | None -> "")
@@ -1797,7 +2053,7 @@ let text_lines verbose = function
              (List.map
                 (fun (n, u) ->
                   if u.base then sprintf "%s : %s" n (Dim.to_string u.udim)
-                  else if Q.equal u.factor Q.one then sprintf "%s = [%s]" n (Dim.to_string u.udim)
+                  else if is_unscaled u.factor then sprintf "%s = [%s]" n (Dim.to_string u.udim)
                   else sprintf "%s = %s [%s]" n (factor_string u.factor) (Dim.to_string u.udim))
                 us)) ]
   | SAlias (n, v) -> [ sprintf "  dim %s = %s" n (Dim.to_string v) ]
@@ -1894,6 +2150,16 @@ let shown_json th line sh : Yojson.Safe.t =
               (fun (l, a, b, foot) ->
                 `Assoc [ ("label", r l); ("from", dir a); ("to", dir b); ("at", jstr (if foot then "foot" else "center")) ])
               dg.marks ) ]
+  | SEigen e ->
+      let r e = `Assoc [ ("text", jstr (Pretty.expr e)); ("latex", jstr (Pretty.latex ~vec e)) ] in
+      item "eigen"
+        [ ("name", jstr e.eigname); ("a", r e.ea); ("b", match e.eb with Some b -> r b | None -> `Null);
+          ("dim", jdim th e.ldim);
+          ( "values",
+            jlist
+              (fun (l, m, vs) ->
+                `Assoc [ ("value", r l); ("multiplicity", `Int m); ("vectors", jlist (fun v -> r (Call ("vec", v))) vs) ])
+              e.pairs ) ]
   | SGroups g ->
       let r e = `Assoc [ ("text", jstr (Pretty.expr e)); ("latex", jstr (Pretty.latex ~vec e)) ] in
       let named x = `Assoc [ ("name", jstr x); ("symbol", jstr (Pretty.name x)) ] in
@@ -1943,7 +2209,8 @@ let shown_json th line sh : Yojson.Safe.t =
               (fun (n, u) ->
                 `Assoc
                   [ ("name", jstr n); ("latex", jstr (Dim.to_latex ~roman:true (Dim.base n))); ("dim", jdim th u.udim);
-                    ("factor", jstr (factor_string u.factor)); ("base", `Bool u.base) ])
+                    ("factor", jstr (factor_string u.factor)); ("factor_latex", jstr (factor_latex u.factor));
+                    ("base", `Bool u.base) ])
               us ) ]
   | SVar (ns, d, attrs, vunit) ->
       let vec = is_vector_attrs attrs in
@@ -1995,6 +2262,7 @@ let check_items rep items =
     (Pretty.vector_size := fun v -> vector_size (attrs_of th v));
     (Pretty.deps_of := fun v -> deps_of th v);
     (Pretty.is_vector_expr := fun e -> match shape th e with Shape.V _ -> true | _ -> false);
+    (Pretty.is_matrix := fun v -> is_matrix_attrs (attrs_of th v));
     (Pretty.is_time :=
        fun v ->
          match Option.map (fun i -> Dim.K.bindings i.vdim) (find_var th v) with
