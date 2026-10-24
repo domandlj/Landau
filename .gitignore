@@ -4,3 +4,5 @@ __pycache__/
 web/node_modules/
 web/dist/
 modules/.trash/
+wasm/node_modules/
+web/public/engine/

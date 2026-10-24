@@ -11,6 +11,7 @@ import {
   fetchModules,
   importersOf,
   MODULE_NAME,
+  onEngineStatus,
   saveModule,
   type Module,
   type Report,
@@ -83,6 +84,9 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [status, setStatus] = useState<Status>({ state: "idle" });
+  // what the in-browser engine is loading on its first check ("loading SymPy")
+  const [engineStatus, setEngineStatus] = useState<string | null>(null);
+  useEffect(() => onEngineStatus(setEngineStatus), []);
   const [dimStyle, setDimStyle] = useState<DimStyle>(() => loadSetting(DIM_STYLE_KEY, ["fraction", "powers"] as const));
   const [dimMode, setDimMode] = useState<DimMode>(() => loadSetting(DIM_MODE_KEY, ["dims", "units"] as const));
   const chooseDimStyle = (style: DimStyle) => {
@@ -308,7 +312,7 @@ export function App() {
           </button>
         )}
         <div className="spacer" />
-        <StatusPill status={status} report={report} errors={errorCount} />
+        <StatusPill status={status} report={report} errors={errorCount} loading={engineStatus} />
         <Settings
           values={{ dimMode, dimStyle, derivStyle, theme }}
           set={{ setDimMode: chooseDimMode, setDimStyle: chooseDimStyle, setDerivStyle: chooseDerivStyle, setTheme: chooseTheme }}
@@ -493,8 +497,8 @@ function DeleteDialog({
   );
 }
 
-function StatusPill({ status, report, errors }: { status: Status; report: Report | null; errors: number }) {
-  if (status.state === "checking") return <span className="pill pill-busy">checking…</span>;
+function StatusPill({ status, report, errors, loading }: { status: Status; report: Report | null; errors: number; loading: string | null }) {
+  if (status.state === "checking") return <span className="pill pill-busy">{loading ?? "checking"}…</span>;
   if (status.state === "failed") return <span className="pill pill-bad">offline</span>;
   if (!report) return null;
   if (errors === 0) return <span className="pill pill-ok">✓ dimensions consistent</span>;

@@ -1419,11 +1419,11 @@ let loaded_modules : (string, string list) Hashtbl.t = Hashtbl.create 4 (* file 
 let module_of_theory : (string, string) Hashtbl.t = Hashtbl.create 8 (* theory -> file *)
 let loading : string list ref = ref [] (* for import cycles *)
 
-let same_file a b =
-  try
-    let sa = Unix.stat a and sb = Unix.stat b in
-    sa.st_dev = sb.st_dev && sa.st_ino = sb.st_ino
-  with Unix.Unix_error _ -> a = b
+(* Where files can be compared and resolved: the native executable sets
+   these with Unix; in the browser, module files have a single name each. *)
+let same_file_hook : (string -> string -> bool) ref = ref String.equal
+let realpath_hook : (string -> string) ref = ref Fun.id
+let same_file a b = !same_file_hook a b
 
 let is_current f = match !current_file with Some c -> same_file c f | None -> false
 let module_name f = Filename.remove_extension (Filename.basename f)
@@ -2316,21 +2316,27 @@ let setup_modules file =
   let file = match (file, !stdin_as) with "-", Some f -> f | _ -> file in
   let own = if file = "-" then [] else [ Filename.dirname file ] in
   (* the same directory may be named in several ways: compare real paths *)
-  let real d = try Unix.realpath d with Unix.Unix_error _ -> d in
+  let real = !realpath_hook in
   module_path :=
     List.fold_left (fun acc d -> if List.mem (real d) acc then acc else acc @ [ real d ]) [] (own @ !extra_module_dirs @ [ home ]);
   current_file := (if file = "-" then None else Some file);
   Hashtbl.reset loaded_modules;
   Hashtbl.reset module_of_theory;
-  loading := []
+  loading := [];
+  (* in the browser one process checks file after file *)
+  Dim.order := [];
+  Hashtbl.reset Dim.symbols
 
-let with_source file k =
+(* [source] is the text of the file, when it does not come from disk *)
+let with_source ?source file k =
   setup_modules file;
-  let ic = if file = "-" then stdin else open_in_bin file in
-  let lexbuf = Lexing.from_channel ic in
+  let ic = if source <> None then None else Some (if file = "-" then stdin else open_in_bin file) in
+  let lexbuf =
+    match (source, ic) with Some s, _ -> Lexing.from_string s | None, Some ic -> Lexing.from_channel ic | None, None -> assert false
+  in
   Lexing.set_filename lexbuf file;
   let parsed = parse lexbuf in
-  if file <> "-" then close_in ic;
+  if file <> "-" then Option.iter close_in ic;
   k lexbuf parsed
 
 let run_file ~verbose file =
@@ -2356,11 +2362,11 @@ let run_file ~verbose file =
         items;
       !ok
 
-(* The whole report as one JSON object on stdout:
+(* The whole report as one JSON object (run_file_json prints it):
    { "ok", "errors": [{line, col, message, theory}], "theories": [{name, items}] }
    Errors also appear among their theory's items, in source order. *)
-let run_file_json file =
-  with_source file @@ fun lexbuf parsed ->
+let json_report ?source file =
+  with_source ?source file @@ fun lexbuf parsed ->
   let errors = ref [] and theories = ref [] in
   let add_item th it =
     match List.assoc_opt th !theories with
@@ -2396,5 +2402,9 @@ let run_file_json file =
         ( "theories",
           jlist (fun (n, l) -> `Assoc [ ("name", jstr n); ("items", `List (List.rev !l)) ]) !theories ) ]
   in
+  report
+
+let run_file_json file =
+  let report = json_report file in
   print_endline (Yojson.Safe.to_string report);
-  !errors = []
+  match report with `Assoc (("ok", `Bool ok) :: _) -> ok | _ -> false

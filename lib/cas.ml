@@ -54,14 +54,21 @@ let channels () =
       worker := Some w;
       w
 
+(* Another way to reach the worker: in the browser there is no process to
+   start, and a request line goes to cas/worker.py running in Pyodide. *)
+let transport : (string -> string) option ref = ref None
+
 let request (req : Yojson.Safe.t) =
-  let ic, oc = channels () in
-  output_string oc (Yojson.Safe.to_string req);
-  output_char oc '\n';
-  flush oc;
   let line =
-    try input_line ic
-    with End_of_file -> fail "the SymPy worker stopped (is SymPy installed? set LANDAU_PYTHON)"
+    match !transport with
+    | Some send -> send (Yojson.Safe.to_string req)
+    | None -> (
+        let ic, oc = channels () in
+        output_string oc (Yojson.Safe.to_string req);
+        output_char oc '\n';
+        flush oc;
+        try input_line ic
+        with End_of_file -> fail "the SymPy worker stopped (is SymPy installed? set LANDAU_PYTHON)")
   in
   match Yojson.Safe.from_string line with
   | `Assoc [ ("ok", `List xs) ] -> xs

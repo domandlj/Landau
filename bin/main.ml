@@ -1,4 +1,11 @@
 let () =
+  (Landau.Check.same_file_hook :=
+     fun a b ->
+       try
+         let sa = Unix.stat a and sb = Unix.stat b in
+         sa.st_dev = sb.st_dev && sa.st_ino = sb.st_ino
+       with Unix.Unix_error _ -> a = b);
+  (Landau.Check.realpath_hook := fun d -> try Unix.realpath d with Unix.Unix_error _ -> d);
   let verbose = ref false and json = ref false and files = ref [] in
   Arg.parse
     [ ("-v", Arg.Set verbose, " show every step of each derivation");

@@ -1,5 +1,10 @@
 // The JSON report printed by `landau --json` (see run_file_json in lib/check.ml).
 
+import * as browser from "./engine";
+
+/** Checks run in the browser (engine.ts) instead of on the dev server. */
+export const IN_BROWSER = import.meta.env.VITE_ENGINE === "browser";
+
 /** "scalar", or "2-vector", "3-vector", ... */
 export type Shape = string;
 
@@ -185,7 +190,11 @@ export interface Module {
 export const MODULE_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 
 /** `module`: the module being edited, so its imports resolve as that file's. */
+/** Calls f with what the in-browser engine is loading, or null when done. */
+export const onEngineStatus = (f: (s: string | null) => void): (() => void) => (IN_BROWSER ? browser.onEngineStatus(f) : () => {});
+
 export async function checkSource(source: string, module: string | null, signal: AbortSignal): Promise<Report> {
+  if (IN_BROWSER) return browser.checkSource(source, module, signal);
   const res = await fetch("/api/check", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -197,12 +206,14 @@ export async function checkSource(source: string, module: string | null, signal:
 }
 
 export async function fetchModules(): Promise<Module[]> {
+  if (IN_BROWSER) return browser.fetchModules();
   const res = await fetch("/api/modules");
   if (!res.ok) throw new Error(`server error ${res.status}`);
   return res.json();
 }
 
 export async function saveModule(name: string, source: string): Promise<void> {
+  if (IN_BROWSER) return browser.saveModule(name, source);
   const res = await fetch(`/api/modules/${encodeURIComponent(name)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -211,8 +222,9 @@ export async function saveModule(name: string, source: string): Promise<void> {
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? `server error ${res.status}`);
 }
 
-/** Moves the module to modules/.trash; returns where it went. */
+/** Moves the module to modules/.trash (or out of browser storage); returns where it went. */
 export async function deleteModule(name: string): Promise<string> {
+  if (IN_BROWSER) return browser.deleteModule(name);
   const res = await fetch(`/api/modules/${encodeURIComponent(name)}`, { method: "DELETE" });
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new Error(body?.error ?? `server error ${res.status}`);

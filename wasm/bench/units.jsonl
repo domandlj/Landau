@@ -1,0 +1,2 @@
+{"op":"solve","lhs":{"sym":"s0"},"rhs":{"mul":[{"sym":"s1"},{"sym":"s2"}]},"for":"s2","syms":{"s0":{"real":true},"s1":{"real":true,"positive":true},"s2":{"real":true}}}
+{"op":"solve","lhs":{"sym":"s0"},"rhs":{"mul":[{"num":"1"},{"pow":[{"fn":"sqrt","args":[{"mul":[{"sym":"s1"},{"sym":"s2"}]}]},{"num":"-1"}]}]},"for":"s2","syms":{"s0":{"real":true,"positive":true},"s1":{"real":true,"positive":true},"s2":{"real":true,"positive":true}}}

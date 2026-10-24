@@ -1,0 +1,5 @@
+; Landau's checker for the browser: `landau.bc.js` defines globalThis.landau.
+(executable
+ (name landau)
+ (modes js)
+ (libraries landau js_of_ocaml zarith_stubs_js))

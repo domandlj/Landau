@@ -1,0 +1,11 @@
+{
+  "name": "landau-wasm",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "node bench/pyodide.mjs"
+  },
+  "dependencies": {
+    "pyodide": "314.0.7"
+  }
+}

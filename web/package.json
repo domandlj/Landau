@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:browser": "npm run engine && VITE_ENGINE=browser vite",
     "build": "tsc --noEmit && vite build",
+    "build:browser": "npm run engine && tsc --noEmit && VITE_ENGINE=browser vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "engine": "sh -c 'eval \"$(opam env --switch=landau)\" && dune build --root .. --profile release ./js/landau.bc.js 2>&1 | grep -v \"^Entering\\|^Leaving\" >&2; mkdir -p public/engine && cp -f ../_build/default/js/landau.bc.js public/engine/'"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

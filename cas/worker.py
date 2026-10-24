@@ -408,13 +408,18 @@ def handle(req):
     raise ValueError(f"unknown op {req['op']}")
 
 
+def answer(line):
+    """The reply line to one request line (Pyodide calls this directly)."""
+    try:
+        reply = {"ok": handle(json.loads(line))}
+    except Exception as e:  # report every failure back to Landau
+        reply = {"error": f"{type(e).__name__}: {e}"}
+    return json.dumps(reply)
+
+
 def main():
     for line in sys.stdin:
-        try:
-            reply = {"ok": handle(json.loads(line))}
-        except Exception as e:  # report every failure back to Landau
-            reply = {"error": f"{type(e).__name__}: {e}"}
-        sys.stdout.write(json.dumps(reply) + "\n")
+        sys.stdout.write(answer(line) + "\n")
         sys.stdout.flush()
 
 

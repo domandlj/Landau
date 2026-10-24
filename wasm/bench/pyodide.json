@@ -1,0 +1,94 @@
+{
+  "boot_seconds": 3.112,
+  "sympy_load_seconds": 6.985,
+  "python": "3.14.2",
+  "sympy": "1.14.0",
+  "import_seconds": 5.698,
+  "modules": {
+    "approximations": {
+      "requests": 9,
+      "seconds": 2.661,
+      "hash": "a55da03fe969"
+    },
+    "derivatives": {
+      "requests": 13,
+      "seconds": 0.611,
+      "hash": "88ae710e4e15"
+    },
+    "dimensional": {
+      "requests": 7,
+      "seconds": 0.016,
+      "hash": "543c25092401"
+    },
+    "energy": {
+      "requests": 2,
+      "seconds": 0.067,
+      "hash": "34328d3a0cd6"
+    },
+    "forces": {
+      "requests": 82,
+      "seconds": 1.012,
+      "hash": "9ccc8db4f24e"
+    },
+    "integrals": {
+      "requests": 18,
+      "seconds": 49.588,
+      "hash": "9ea5a9646dd3"
+    },
+    "matrices": {
+      "requests": 12,
+      "seconds": 1.103,
+      "hash": "59f081d0986b"
+    },
+    "maxwell": {
+      "requests": 15,
+      "seconds": 0.967,
+      "hash": "1989523f833f"
+    },
+    "motion": {
+      "requests": 18,
+      "seconds": 2.088,
+      "hash": "69cedeebfbc0"
+    },
+    "numbers": {
+      "requests": 14,
+      "seconds": 0.089,
+      "hash": "0657a8d5d09b"
+    },
+    "numerical": {
+      "requests": 24,
+      "seconds": 4.376,
+      "hash": "32f77e644eb8"
+    },
+    "projectile": {
+      "requests": 3,
+      "seconds": 0.337,
+      "hash": "c11d71e85beb"
+    },
+    "quantum": {
+      "requests": 1,
+      "seconds": 0.691,
+      "hash": "fc5ee841f5a5"
+    },
+    "series": {
+      "requests": 17,
+      "seconds": 3.485,
+      "hash": "b9aab120beed"
+    },
+    "systems": {
+      "requests": 5,
+      "seconds": 0.819,
+      "hash": "d49a2e99ffc9"
+    },
+    "units": {
+      "requests": 2,
+      "seconds": 0.115,
+      "hash": "506a7e0cedba"
+    },
+    "work": {
+      "requests": 6,
+      "seconds": 0.403,
+      "hash": "7f3f2d2555f7"
+    }
+  }
+}
