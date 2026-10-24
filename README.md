@@ -43,11 +43,28 @@ Partial derivatives are always ∂u/∂x. Needs Node 18+:
 
 ```
 cd web && npm install && npm run dev      # http://127.0.0.1:5173
+npm run build                             # a static site in web/dist
 ```
 
-The Vite server runs `landau --json -` for each check (see `web/vite.config.ts`),
-so it only listens on localhost, and saving writes only `modules/*.lan`.
-`#name` in the URL opens `modules/name.lan`.
+Checks run in the page, with no server: the checker is compiled to JavaScript
+with js_of_ocaml (`js/landau.ml`; `npm run engine` builds it into
+`web/public/engine`, and `dev` and `build` do that first) and `cas/worker.py`
+runs in Pyodide, CPython compiled to WebAssembly, loaded from jsdelivr. Both
+live in a Web Worker (`web/src/engine.worker.ts`). The first check loads
+Python and SymPy, about 15 s; after that Python stays loaded. SciPy is loaded
+on the first `simulate`. The modules of `modules/` are built into the app, and
+modules you save or delete are kept in the browser's localStorage. `npm run
+build` needs the opam switch for the checker; `web/dist` can then be served by
+any static file server.
+
+`npm run dev:server` checks with the native `landau` instead: the Vite server
+runs `landau --json -` for each check (see `web/vite.config.ts`), so it only
+listens on localhost, and saving writes `modules/*.lan`.
+`#name` in the URL opens that module.
+
+`wasm/smoke.mjs` checks every module with the browser engine in Node and
+compares each report with the native one; `wasm/bench` times SymPy natively
+and in Pyodide.
 
 The **?** button (or F1) opens a searchable reference of the whole language,
 with formulas, examples to insert and a short program to try for each topic;

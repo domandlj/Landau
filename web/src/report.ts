@@ -2,8 +2,9 @@
 
 import * as browser from "./engine";
 
-/** Checks run in the browser (engine.ts) instead of on the dev server. */
-export const IN_BROWSER = import.meta.env.VITE_ENGINE === "browser";
+/** Checks run in the browser (engine.ts), unless VITE_ENGINE=server sends
+ *  them to the dev server, which runs the native `landau`. */
+export const IN_BROWSER = import.meta.env.VITE_ENGINE !== "server";
 
 /** "scalar", or "2-vector", "3-vector", ... */
 export type Shape = string;

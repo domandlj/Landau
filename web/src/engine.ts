@@ -1,6 +1,7 @@
-// The browser engine (VITE_ENGINE=browser): checks run in engine.worker.ts
-// instead of on the server, the modules of modules/ are built into the app,
-// and modules you save or delete are kept in this browser's localStorage.
+// The browser engine, the default (VITE_ENGINE=server turns it off): checks
+// run in engine.worker.ts instead of on the server, the modules of modules/
+// are built into the app, and modules you save or delete are kept in this
+// browser's localStorage.
 
 import type { Module, Report } from "./report";
 

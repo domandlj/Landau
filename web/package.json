@@ -4,10 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:browser": "npm run engine && VITE_ENGINE=browser vite",
-    "build": "tsc --noEmit && vite build",
-    "build:browser": "npm run engine && tsc --noEmit && VITE_ENGINE=browser vite build",
+    "dev": "npm run engine && vite",
+    "dev:server": "VITE_ENGINE=server vite",
+    "build": "npm run engine && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

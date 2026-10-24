@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** "browser": check in the page (src/engine.ts) instead of on the dev server */
+  /** "server": check with the native landau on the dev server instead of in the page (src/engine.ts) */
   readonly VITE_ENGINE?: string;
 }

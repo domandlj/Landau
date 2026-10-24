@@ -126,8 +126,9 @@ function landauApi(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), landauApi()],
-  // Keep the app local: the API runs code on this machine.
+  // The API exists only with VITE_ENGINE=server; by default checks run in the page.
+  plugins: [react(), ...(process.env.VITE_ENGINE === "server" ? [landauApi()] : [])],
+  // Keep the app local: with VITE_ENGINE=server the API runs code on this machine.
   server: { host: "127.0.0.1" },
   preview: { host: "127.0.0.1" },
 });
