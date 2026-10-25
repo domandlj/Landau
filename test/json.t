@@ -10,6 +10,7 @@ whether the file checked.
   errors.lan False
   forces.lan True
   integrals.lan True
+  lagrange.lan True
   landau.lan True
   matrices.lan True
   maxwell.lan True

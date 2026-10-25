@@ -975,6 +975,8 @@ let describe = function
   | Solve (_, xs, _, _) -> "solve for " ^ String.concat ", " xs ^ " with initial conditions"
   | Apply (f, _) -> "apply " ^ f
   | Integrate (_, x, a, b) -> sprintf "integrate by %s from %s to %s" x (Pretty.expr a) (Pretty.expr b)
+  | EulerLagrange (_, x) -> "Euler–Lagrange for " ^ x
+  | Conserved (_, x) -> "conserved for " ^ x
   | Subst _ -> "subst"
   | Simplify _ -> "simplify"
   | Unfold _ -> "unfold"
@@ -989,6 +991,33 @@ let describe = function
   | Limit (_, x, p) -> sprintf "limit %s → %s" x (Pretty.expr p)
   | Evaluate (_, Some u, _) -> "evaluate in " ^ Pretty.dexpr_to_string u
   | Evaluate (_, None, _) -> "evaluate"
+
+(* ---- Lagrangian mechanics ---- *)
+
+(* The Lagrangian of the law L = ... *)
+let lagrangian th step q =
+  match q with
+  | { lhs = Var _; rhs } when snd (check_eq th q) = Shape.Scalar -> rhs
+  | { lhs = Var _; _ } -> fail "a Lagrangian is a scalar"
+  | _ -> fail "`%s` needs the Lagrangian as `L = ...`, but this is `%s`" step (Pretty.eq q)
+
+(* A coordinate x(t), and its time t *)
+let coordinate th step x =
+  let vi = check_var th x in
+  if not_scalar vi.attrs then fail "`%s` works one coordinate at a time; `%s` is a vector" step x;
+  match vi.deps with
+  | [ t ] when deps_of th t = [] -> t
+  | [] -> fail "`%s` is not a function of time; declare a coordinate like `var q(t)`" x
+  | _ -> fail "a coordinate depends on time alone, like `var q(t)`, but `%s` depends on %s" x (String.concat ", " vi.deps)
+
+(* A new constant of dimension d named [base], or base1, base2, ... when
+   that name is taken *)
+let new_constant th base d =
+  let taken n = List.mem_assoc n th.vars in
+  let rec go k = let n = base ^ string_of_int k in if taken n then go (k + 1) else n in
+  let n = if taken base then go 1 else base in
+  th.vars <- th.vars @ [ (n, { origin = th.tname; v = { vdim = d; attrs = [ "real" ]; deps = []; vunit = None; value = None } }) ];
+  n
 
 let rec eval th locals s =
   match s with
@@ -1177,6 +1206,46 @@ let rec eval th locals s =
       | Some vi when not_scalar vi.attrs -> fail "cannot integrate over the vector `%s`" x
       | Some _ -> ());
       { v with veq = map_eq (fun e -> Call ("integral", [ unfold th (fun _ -> true) e; Var x; a; b ])) v.veq }
+  | EulerLagrange (s, x) ->
+      (* From L = ..., the equation of motion d/dt ∂L/∂ẋ - ∂L/∂x = 0 *)
+      let v = eval th locals s in
+      let q = map_eq (prepare th) v.veq in
+      let l = lagrangian th "euler_lagrange" q in
+      let t = coordinate th "euler_lagrange" x in
+      if not (depends th x l) then fail "the Lagrangian `%s` does not depend on `%s`" (Pretty.expr l) x;
+      let e = tidy (vectors_last th (Cas.euler_lagrange ~attrs_of:(attrs_of th) ~deps_of:(cas_deps th) l x t)) in
+      { v with veq = { lhs = e; rhs = Num Q.zero }; vassumes = union v.vassumes (assumptions th q) }
+  | Conserved (s, by) ->
+      (* Noether: a Lagrangian without t conserves the energy, and one without
+         the coordinate x conserves its momentum *)
+      let v = eval th locals s in
+      let q = map_eq (prepare th) v.veq in
+      let l = lagrangian th "conserved" q in
+      let time_of x = match deps_of th x with [ t ] when deps_of th t = [] -> Some t | _ -> None in
+      let energy = (check_var th by).deps = [] in
+      let t, coords =
+        if energy then (
+          let coords = List.filter (fun x -> time_of x = Some by) (vars [] l) in
+          if coords = [] then fail "nothing in the Lagrangian `%s` changes with `%s`" (Pretty.expr l) by;
+          (by, coords))
+        else (coordinate th "conserved" by, [ by ])
+      in
+      if (not energy) && not (depends th by l) then fail "the Lagrangian `%s` does not depend on `%s`" (Pretty.expr l) by;
+      let d, quantity = Cas.conserved ~attrs_of:(attrs_of th) ~deps_of:(cas_deps th) l coords t by in
+      (match tidy d with
+      | Num z when Q.equal z Q.zero -> ()
+      | d when energy ->
+          fail "the Lagrangian depends on `%s` itself, so the energy is not conserved: ∂L/∂%s = %s" t t (Pretty.expr d)
+      | d -> fail "`%s` appears in the Lagrangian, so its momentum is not conserved: ∂L/∂%s = %s" by by (Pretty.expr d));
+      let quantity = tidy (vectors_last th quantity) in
+      let dim = fst (check_eq th { lhs = quantity; rhs = quantity }) in
+      let c = new_constant th (if energy then "E" else "p_" ^ by) dim in
+      {
+        v with
+        veq = { lhs = Var c; rhs = quantity };
+        vassumes = union v.vassumes (assumptions th q);
+        vconsts = v.vconsts @ [ (c, dim) ];
+      }
   | Simplify s ->
       let v = eval th locals s in
       let q = map_eq (prepare th) v.veq in

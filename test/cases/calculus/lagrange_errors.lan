@@ -1,0 +1,29 @@
+-- Mistakes with euler_lagrange and conserved: each derivation fails with
+-- the reason.
+theory Mistakes
+  import SI
+  var t, τ : s
+  var x(t), z(t), y : m
+  var u(t, τ) : m
+  var r(t) : m, vector
+  var m : kg, positive
+  var F0 : N
+  var ω : 1/s
+  var L : J
+
+  law free:   L = m*diff(x, t)^2/2
+  law driven: L = m*diff(x, t)^2/2 + F0*x*cos(ω*t)
+  law static: L = F0*y
+  law swapped: m*diff(x, t)^2/2 = L
+  law vectorial: L = m*dot(diff(r, t), diff(r, t))/2
+
+  derive not_a_definition: euler_lagrange swapped for x end
+  derive constant_coordinate: euler_lagrange static for y end
+  derive two_times: euler_lagrange free for u end
+  derive vector_coordinate: euler_lagrange vectorial for r end
+  derive absent: euler_lagrange free for z end
+  derive not_cyclic: conserved driven for x end
+  derive explicit_time: conserved driven for t end
+  derive nothing_moves: conserved static for t end
+  derive cyclic: conserved free for x end              -- this one holds: p_x = m ẋ
+end

@@ -1,0 +1,111 @@
+-- Lagrangian mechanics: equations of motion and conserved quantities from
+-- one scalar, the Lagrangian L = T - V.
+--   euler_lagrange lag for x    d/dt ∂L/∂ẋ - ∂L/∂x = 0
+--   conserved lag for t         the energy, when L does not depend on t
+--   conserved lag for φ         the momentum of φ, when L does not depend on φ
+
+text
+  **Lagrangian mechanics.** Instead of forces, write one scalar, the
+  Lagrangian $L = T - V$, the kinetic energy minus the potential energy, in
+  any coordinates you like. Each coordinate $q$ then obeys the
+  Euler–Lagrange equation
+  $$\frac{\mathrm{d}}{\mathrm{d}t}\frac{\partial L}{\partial \dot q} - \frac{\partial L}{\partial q} = 0.$$
+end
+
+theory Spring
+  import SI
+  var t : s, positive
+  var x(t) : m
+  var m : kg, positive
+  var k : N/m, positive
+  var x0 : m
+  var L : J
+
+  law lagrangian: L = m*diff(x, t)^2/2 - k*x^2/2
+
+  text
+    For a mass on a spring the Euler–Lagrange equation is Newton's law
+    $m\ddot x = -kx$, and *solve* finishes the job. Its dimension is that of
+    $L$ over that of $x$: an energy per length, a force.
+  end
+
+  derive motion:                   -- x = x0*cos(sqrt(k/m)*t)
+    eom := euler_lagrange lagrangian for x
+    solve eom for x with x(0) = x0, at(diff(x, t), t, 0) = 0
+  end
+
+  text
+    $L$ does not depend on $t$ itself, so by Noether's theorem the energy
+    $E = \dot x\,\partial L/\partial \dot x - L$ is conserved.
+  end
+
+  derive energy:                   -- E = m ẋ²/2 + k x²/2
+    conserved lagrangian for t
+  end
+end
+
+theory Pendulum
+  import SI
+  var t : s, positive
+  var θ(t) : 1                     -- the angle from the vertical
+  var m : kg, positive
+  var ℓ : m, positive
+  var g : m/s^2, positive
+  var θ0 : 1
+  var L : J
+
+  text
+    **A pendulum.** The coordinate is an angle, and nothing changes: the
+    equation of motion now has the dimension of an energy, a torque.
+  end
+
+  law lagrangian: L = m*ℓ^2*diff(θ, t)^2/2 + m*g*ℓ*cos(θ)
+
+  derive motion:                   -- m ℓ² θ̈ + m g ℓ sin θ = 0
+    euler_lagrange lagrangian for θ
+  end
+
+  derive small:                    -- θ = θ0*cos(sqrt(g/ℓ)*t)
+    e := euler_lagrange lagrangian for θ
+    s := approximate e where θ << 1
+    solve s for θ with θ(0) = θ0, at(diff(θ, t), t, 0) = 0
+  end
+end
+
+theory Kepler
+  import SI
+  var t : s
+  var r(t) : m                     -- polar coordinates in the plane of the orbit
+  var φ(t) : 1
+  var m : kg, positive
+  var k : J*m, positive            -- the strength of the attraction: V = -k/r
+  var L : J
+
+  text
+    **The Kepler problem.** A planet attracted by $V = -k/r$, in polar
+    coordinates. The Lagrangian takes care of the geometry: the centrifugal
+    term $m r \dot\varphi^2$ in the radial equation comes out by itself.
+  end
+
+  law lagrangian: L = m*(diff(r, t)^2 + r^2*diff(φ, t)^2)/2 + k/r
+
+  derive radial:                   -- m r̈ - m r φ̇² + k/r² = 0
+    euler_lagrange lagrangian for r
+  end
+
+  text
+    $L$ depends on $\dot\varphi$ but not on $\varphi$: the problem looks the
+    same from every direction, and the angular momentum
+    $p_\varphi = \partial L/\partial\dot\varphi$ is conserved. This is
+    Kepler's second law. The energy is conserved too. Asking for the momentum
+    of $r$ is an error, which shows why: $\partial L/\partial r \ne 0$.
+  end
+
+  derive angular_momentum:         -- p_φ = m r² φ̇
+    conserved lagrangian for φ
+  end
+
+  derive energy:                   -- E = m ṙ²/2 + m r² φ̇²/2 - k/r
+    conserved lagrangian for t
+  end
+end

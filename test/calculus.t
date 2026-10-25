@@ -450,3 +450,38 @@ rule; putting θ := ω*t into a law turns h(θ) into h(ω*t).
   cases/calculus/chain.lan:51: error: `diff(y, t)` is always 0, because `y` does not depend on `t`; declare the dependence, e.g. `var y(t, x) : ...`
   
   [1]
+
+Lagrangian mechanics: each misuse of euler_lagrange and conserved fails with
+its reason; the last derivation holds.
+
+  $ landau cases/calculus/lagrange_errors.lan
+  theory Mistakes
+    import SI
+    var t, τ : s   [T]
+    var x(t), z(t), y : m   [L]
+    var u(t, τ) : m   [L]
+    var r(t) : m   [L], vector
+    var m : kg   [M], positive
+    var F0 : N   [M*L/T^2]
+    var ω : 1/s   [1/T]
+    var L : J   [M*L^2/T^2]
+    law free : L = m*diff(x, t)^2/2   [M*L^2/T^2]
+    law driven : L = m*diff(x, t)^2/2 + F0*x*cos(ω*t)   [M*L^2/T^2]
+    law static : L = F0*y   [M*L^2/T^2]
+    law swapped : m*diff(x, t)^2/2 = L   [M*L^2/T^2]
+    law vectorial : L = m*dot(diff(r, t), diff(r, t))/2   [M*L^2/T^2]
+  cases/calculus/lagrange_errors.lan:20: error: `euler_lagrange` needs the Lagrangian as `L = ...`, but this is `m*diff(x, t)^2/2 = L`
+  cases/calculus/lagrange_errors.lan:21: error: `y` is not a function of time; declare a coordinate like `var q(t)`
+  cases/calculus/lagrange_errors.lan:22: error: a coordinate depends on time alone, like `var q(t)`, but `u` depends on t, τ
+  cases/calculus/lagrange_errors.lan:23: error: `euler_lagrange` works one coordinate at a time; `r` is a vector
+  cases/calculus/lagrange_errors.lan:24: error: the Lagrangian `m*diff(x, t)^2/2` does not depend on `z`
+  cases/calculus/lagrange_errors.lan:25: error: `x` appears in the Lagrangian, so its momentum is not conserved: ∂L/∂x = F0*cos(t*ω)
+  cases/calculus/lagrange_errors.lan:26: error: the Lagrangian depends on `t` itself, so the energy is not conserved: ∂L/∂t = -F0*ω*x*sin(t*ω)
+  cases/calculus/lagrange_errors.lan:27: error: nothing in the Lagrangian `F0*y` changes with `t`
+    derive cyclic : p_x = m*diff(x, t)   [M*L/T]
+        from    Mistakes.free
+        assumes m > 0
+        constants p_x [M*L/T]
+        via     conserved for x
+  
+  [1]

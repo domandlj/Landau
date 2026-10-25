@@ -692,6 +692,100 @@ against an independent calculation when the feature was added.
     | the force is called conservative, like the spring in `SpringField` in the
     | **work** module.
 
+  $ landau -v ../modules/lagrange.lan
+    | **Lagrangian mechanics.** Instead of forces, write one scalar, the
+    | Lagrangian $L = T - V$, the kinetic energy minus the potential energy, in
+    | any coordinates you like. Each coordinate $q$ then obeys the
+    | Euler–Lagrange equation
+    | $$\frac{\mathrm{d}}{\mathrm{d}t}\frac{\partial L}{\partial \dot q} - \frac{\partial L}{\partial q} = 0.$$
+  theory Spring
+    import SI
+    var t : s   [T], positive
+    var x(t) : m   [L]
+    var m : kg   [M], positive
+    var k : N/m   [M/T^2], positive
+    var x0 : m   [L]
+    var L : J   [M*L^2/T^2]
+    law lagrangian : L = m*diff(x, t)^2/2 - k*x^2/2   [M*L^2/T^2]
+    | For a mass on a spring the Euler–Lagrange equation is Newton's law
+    | $m\ddot x = -kx$, and *solve* finishes the job. Its dimension is that of
+    | $L$ over that of $x$: an energy per length, a force.
+    derive motion : x = x0*cos(t*sqrt(k)/sqrt(m))   [L]
+        from    Spring.lagrangian
+        assumes m > 0, t > 0, k > 0
+        via     Euler–Lagrange for x, solve for x with initial conditions
+          eom := m*diff(diff(x, t), t) + k*x = 0
+          x = x0*cos(t*sqrt(k)/sqrt(m))
+    | $L$ does not depend on $t$ itself, so by Noether's theorem the energy
+    | $E = \dot x\,\partial L/\partial \dot x - L$ is conserved.
+    derive energy : E = m*diff(x, t)^2/2 + k*x^2/2   [M*L^2/T^2]
+        from    Spring.lagrangian
+        assumes m > 0, t > 0, k > 0
+        constants E [M*L^2/T^2]
+        via     conserved for t
+          E = m*diff(x, t)^2/2 + k*x^2/2
+  
+  theory Pendulum
+    import SI
+    var t : s   [T], positive
+    var θ(t) : 1
+    var m : kg   [M], positive
+    var ℓ : m   [L], positive
+    var g : m/s^2   [L/T^2], positive
+    var θ0 : 1
+    var L : J   [M*L^2/T^2]
+    | **A pendulum.** The coordinate is an angle, and nothing changes: the
+    | equation of motion now has the dimension of an energy, a torque.
+    law lagrangian : L = m*ℓ^2*diff(θ, t)^2/2 + m*g*ℓ*cos(θ)   [M*L^2/T^2]
+    derive motion : m*ℓ^2*diff(diff(θ, t), t) + m*ℓ*g*sin(θ) = 0   [M*L^2/T^2]
+        from    Pendulum.lagrangian
+        assumes m > 0, ℓ > 0, t > 0, g > 0
+        via     Euler–Lagrange for θ
+          m*ℓ^2*diff(diff(θ, t), t) + m*ℓ*g*sin(θ) = 0
+    derive small : θ = θ0*cos(t*sqrt(g)/sqrt(ℓ))   [1]
+        from    Pendulum.lagrangian
+        assumes m > 0, ℓ > 0, t > 0, g > 0, θ ≪ 1 (to order 1); left out: -m*ℓ*g*θ^3/6
+        via     Euler–Lagrange for θ, approximate (θ ≪ 1, order 1), solve for θ with initial conditions
+          e := m*ℓ^2*diff(diff(θ, t), t) + m*ℓ*g*sin(θ) = 0
+          s := m*ℓ^2*diff(diff(θ, t), t) + m*ℓ*g*θ = 0
+          θ = θ0*cos(t*sqrt(g)/sqrt(ℓ))
+  
+  theory Kepler
+    import SI
+    var t : s   [T]
+    var r(t) : m   [L]
+    var φ(t) : 1
+    var m : kg   [M], positive
+    var k : J*m   [M*L^3/T^2], positive
+    var L : J   [M*L^2/T^2]
+    | **The Kepler problem.** A planet attracted by $V = -k/r$, in polar
+    | coordinates. The Lagrangian takes care of the geometry: the centrifugal
+    | term $m r \dot\varphi^2$ in the radial equation comes out by itself.
+    law lagrangian : L = m*(diff(r, t)^2 + r^2*diff(φ, t)^2)/2 + k/r   [M*L^2/T^2]
+    derive radial : m*diff(diff(r, t), t) + k/r^2 - m*diff(φ, t)^2*r = 0   [M*L/T^2]
+        from    Kepler.lagrangian
+        assumes m > 0, k > 0
+        via     Euler–Lagrange for r
+          m*diff(diff(r, t), t) + k/r^2 - m*diff(φ, t)^2*r = 0
+    | $L$ depends on $\dot\varphi$ but not on $\varphi$: the problem looks the
+    | same from every direction, and the angular momentum
+    | $p_\varphi = \partial L/\partial\dot\varphi$ is conserved. This is
+    | Kepler's second law. The energy is conserved too. Asking for the momentum
+    | of $r$ is an error, which shows why: $\partial L/\partial r \ne 0$.
+    derive angular_momentum : p_φ = m*r^2*diff(φ, t)   [M*L^2/T]
+        from    Kepler.lagrangian
+        assumes m > 0, k > 0
+        constants p_φ [M*L^2/T]
+        via     conserved for φ
+          p_φ = m*r^2*diff(φ, t)
+    derive energy : E = m*diff(r, t)^2/2 - k/r + m*diff(φ, t)^2*r^2/2   [M*L^2/T^2]
+        from    Kepler.lagrangian
+        assumes m > 0, k > 0
+        constants E [M*L^2/T^2]
+        via     conserved for t
+          E = m*diff(r, t)^2/2 - k/r + m*diff(φ, t)^2*r^2/2
+  
+
   $ landau -v ../modules/integrals.lan
   theory Shapes
     dim M, L
