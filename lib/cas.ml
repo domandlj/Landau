@@ -371,6 +371,41 @@ let limit ~attrs_of ~deps_of e x point =
   | [ v ] -> reveal (deatomize (of_json back v))
   | _ -> fail "unexpected reply to limit"
 
+(* The Euler–Lagrange expression d/dt ∂L/∂ẋ - ∂L/∂x of the Lagrangian [l]
+   for the coordinate x(t). *)
+let euler_lagrange ~attrs_of ~deps_of l x t =
+  let l, reveal, attrs = match hide_quantities [ l ] with [ l ], r, a -> (l, r, a) | _ -> assert false in
+  let attrs_of = attrs attrs_of in
+  let l = atomize l in
+  let sym, back, syms, is_var = symbols ~attrs_of ~deps_of [ l; Var x; Var t ] in
+  match
+    request
+      (`Assoc
+        [ ("op", `String "euler_lagrange"); ("expr", to_json ~is_var sym l); ("for", `String (sym x));
+          ("by", `String (sym t)); ("syms", syms) ])
+  with
+  | [ v ] -> reveal (deatomize (of_json back v))
+  | _ -> fail "unexpected reply to euler_lagrange"
+
+(* What Noether's theorem gives for the symmetry [by] of the Lagrangian [l]:
+   with [by] the time t, ∂L/∂t and the energy Σ ẋ ∂L/∂ẋ - L over the
+   coordinates; with [by] a coordinate x, ∂L/∂x and the momentum ∂L/∂ẋ. The
+   quantity is conserved when the derivative is 0. *)
+let conserved ~attrs_of ~deps_of l coords t by =
+  let l, reveal, attrs = match hide_quantities [ l ] with [ l ], r, a -> (l, r, a) | _ -> assert false in
+  let attrs_of = attrs attrs_of in
+  let l = atomize l in
+  let sym, back, syms, is_var = symbols ~attrs_of ~deps_of (l :: Var t :: List.map (fun c -> Var c) coords) in
+  match
+    request
+      (`Assoc
+        [ ("op", `String "conserved"); ("expr", to_json ~is_var sym l);
+          ("coords", `List (List.map (fun c -> `String (sym c)) coords)); ("by", `String (sym t));
+          ("for", `String (sym by)); ("syms", syms) ])
+  with
+  | [ d; q ] -> (reveal (deatomize (of_json back d)), reveal (deatomize (of_json back q)))
+  | _ -> fail "unexpected reply to conserved"
+
 (* A numerical root of [e] = 0 for x near [guess]; everything else must be a
    number already. The root is in base units, as a decimal string. *)
 let nsolve ~attrs_of ~deps_of e x guess =

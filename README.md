@@ -143,6 +143,8 @@ derive range:                -- a new law, built from existing ones
   i  := integrate v by t from 0 to T  -- integral of both sides
   a  := approximate e where v << c order 2   -- series in the small ratio v/c
   l  := limit e as t -> inf         -- limit of both sides
+  m  := euler_lagrange lag for x    -- equation of motion from L = ...
+  E  := conserved lag for t         -- energy (for t) or momentum (for a coordinate)
 end                          -- the last step is the derived law
 ```
 
@@ -319,6 +321,16 @@ speed is an error. The derived law records the approximation and the first
 term it left out, as in `v ≪ c (to order 2); left out: 3*m*v^4/(8*c^2)`.
 `limit e as t -> inf` takes the limit of both sides; a lone `v(t)` becomes
 `v(inf)`.
+
+Lagrangian mechanics: give the Lagrangian as a law `L = ...` in coordinates
+declared with their time, `var x(t)`. `euler_lagrange lag for x` gives the
+equation of motion d/dt ∂L/∂ẋ - ∂L/∂x = 0 (SymPy's `euler_equations`), which
+`solve` then integrates; its dimension is that of L over that of x.
+`conserved lag for t` gives the energy E = Σ ẋ ∂L/∂ẋ - L, summed over the
+coordinates in L, and `conserved lag for φ` the momentum p_φ = ∂L/∂φ̇. Each
+names a new constant, `E` or `p_φ`, and is an error when Noether's theorem
+does not apply: when L depends on t itself, or on φ. `modules/lagrange.lan`
+has a spring, a pendulum and the Kepler problem.
 
 Systems: `solve e1, e2, ... for x, y, ...` solves the equations together and
 gives the equation for the first unknown, with the others eliminated; list

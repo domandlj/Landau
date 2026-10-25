@@ -12,7 +12,7 @@ let keywords =
     ("integrate", INTEGRATE); ("from", FROM); ("with", WITH); ("unit", UNIT);
     ("evaluate", EVALUATE); ("in", IN); ("digits", DIGITS); ("const", CONST);
     ("compute", COMPUTE); ("approximate", APPROXIMATE); ("where", WHERE); ("order", ORDER);
-    ("limit", LIMIT); ("as", AS); ("numerically", NUMERICALLY); ("near", NEAR);
+    ("limit", LIMIT); ("euler_lagrange", EULER_LAGRANGE); ("conserved", CONSERVED); ("as", AS); ("numerically", NUMERICALLY); ("near", NEAR);
     ("simulate", SIMULATE); ("points", POINTS); ("diagram", DIAGRAM); ("body", BODY);
     ("force", FORCE); ("toward", TOWARD); ("accelerates", ACCELERATES); ("plane", PLANE); ("draw", DRAW);
     ("mark", MARK); ("between", BETWEEN); ("and", AND); ("groups", GROUPS); ("eigen", EIGEN) ]

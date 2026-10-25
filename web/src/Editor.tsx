@@ -12,7 +12,7 @@ const KEYWORDS = new Set([
   "theory", "end", "import", "dim", "var", "def", "law", "derive",
   "solve", "for", "subst", "into", "simplify", "unfold", "root", "component", "of", "expand", "differentiate", "by",
   "apply", "to", "integrate", "from", "with", "unit", "const", "evaluate", "in", "digits", "compute",
-  "approximate", "where", "order", "limit", "as", "numerically", "near", "simulate", "points",
+  "approximate", "where", "order", "limit", "euler_lagrange", "conserved", "as", "numerically", "near", "simulate", "points",
   "diagram", "body", "force", "toward", "accelerates", "plane", "draw", "mark", "between", "and", "groups", "eigen",
 ]);
 const ATTRIBUTES = new Set(["positive", "nonzero", "real", "complex", "integer", "vector", "position", "matrix"]);

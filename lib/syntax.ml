@@ -54,6 +54,8 @@ type step_expr =
   | NSolve of step_expr * string * expr * int option (* solve eq for x numerically near 2 [s] digits 4 *)
   | Apply of string * step_expr (* apply curl to eq *)
   | Integrate of step_expr * string * expr * expr (* integrate eq by t from a to b *)
+  | EulerLagrange of step_expr * string (* euler_lagrange L for x: d/dt ∂L/∂ẋ - ∂L/∂x = 0 *)
+  | Conserved of step_expr * string (* conserved L for t (the energy) or for x (its momentum) *)
 
 type step = { name : string option; body : step_expr; sline : int }
 

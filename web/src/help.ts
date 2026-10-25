@@ -511,6 +511,16 @@ end
         tex: r`v(\infty) = \frac{m g}{b}`,
         text: "The limit of both sides; a lone `v(t)` becomes `v(inf)`. Also `as x -> 0`, or to any value of the right dimension.",
       },
+      {
+        syntax: "euler_lagrange lag for x",
+        tex: r`\frac{\mathrm{d}}{\mathrm{d}t}\frac{\partial L}{\partial \dot x} - \frac{\partial L}{\partial x} = 0`,
+        text: "The equation of motion for the coordinate `x` from the Lagrangian, given as a law `L = ...` (such as `L = m*diff(x, t)^2/2 - k*x^2/2`). The coordinate is declared with its time, `var x(t)`; an angle works as well as a length. Then `solve` it for `x`. Each equation of motion has the dimension of $L$ over that of $x$: a force for a length, an energy for an angle.",
+      },
+      {
+        syntax: "conserved lag for t",
+        tex: r`E = \sum_i \dot q_i \frac{\partial L}{\partial \dot q_i} - L, \qquad p_\varphi = \frac{\partial L}{\partial \dot\varphi}`,
+        text: "What Noether's theorem conserves. `for t`, the time: the energy $E$, over every coordinate in $L$, when $L$ does not depend on $t$ itself. `for φ`, a coordinate: its momentum $p_\\varphi$, when $L$ has $\\dot\\varphi$ but not $\\varphi$. The result names a new constant, `E` or `p_φ`; when the symmetry is missing, the error shows the derivative that breaks it.",
+      },
       { syntax: "expand e", text: "Write `dot`, `norm`, `cross`, `grad`, `div`, `curl` and `lap` in components. With `simplify` after it, this proves vector identities." },
       { syntax: "component x of e", tex: r`(\vec{a} + s\,\vec{b})_x = a_x + s\,b_x`, text: "One component of a vector equation." },
       { syntax: "differentiate e by t", tex: r`\frac{\mathrm{d}}{\mathrm{d}t}\text{ of both sides}`, text: "Differentiate both sides." },

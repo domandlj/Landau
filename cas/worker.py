@@ -14,6 +14,7 @@ import sys
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 
 import sympy as sp
+from sympy.calculus.euler import euler_equations
 
 FUNCS = {
     "sin": sp.sin, "cos": sp.cos, "tan": sp.tan,
@@ -347,6 +348,30 @@ def handle(req):
         if v.has(sp.zoo) or v.has(sp.nan):
             raise ValueError(f"the limit is undefined ({v})")
         return [to_json(v, funcs)]
+    if req["op"] == "euler_lagrange":
+        # SymPy gives ∂L/∂x - d/dt ∂L/∂ẋ = 0; the usual sign is the other one
+        L = from_json(req["expr"], syms)
+        (eq,) = euler_equations(L, [syms[req["for"]]], [syms[req["by"]]])
+        return [to_json(-eq.lhs, funcs)]
+    if req["op"] == "conserved":
+        # Noether: for the time t, the energy Σ ẋ ∂L/∂ẋ - L, conserved when
+        # ∂L/∂t = 0; for a coordinate x, the momentum ∂L/∂ẋ, conserved when
+        # ∂L/∂x = 0. The reply is that derivative of L, then the quantity.
+        L = from_json(req["expr"], syms)
+        t = syms[req["by"]]
+        coords = [syms[c] for c in req["coords"]]
+        if req["for"] == req["by"]:
+            # hold the coordinates and velocities still to see t on its own
+            held = {sp.diff(q, t): sp.Dummy() for q in coords}
+            held.update({q: sp.Dummy() for q in coords})
+            back = {v: k for k, v in held.items()}
+            partial = sp.diff(L.subs(held), t).subs(back)
+            quantity = sum(sp.diff(q, t) * sp.diff(L, sp.diff(q, t)) for q in coords) - L
+        else:
+            q = syms[req["for"]]
+            partial = sp.diff(L, q)
+            quantity = sp.diff(L, sp.diff(q, t))
+        return [to_json(sp.simplify(partial), funcs), to_json(sp.expand(quantity), funcs)]
     if req["op"] == "simulate":
         return [simulate(req, syms)]
     if req["op"] == "nsolve":
