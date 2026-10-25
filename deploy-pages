@@ -1,0 +1,25 @@
+#!/bin/sh
+# Publish the web app on GitHub Pages: build main (not the working tree) with
+# the repository name as its base path, and push it as the only commit of the
+# gh-pages branch. ./deploy-pages [branch]
+set -e
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ref="${1:-main}"
+url="$(git -C "$HERE" remote get-url origin)"
+repo="$(basename "$url" .git)"        # the site lives at https://<user>.github.io/<repo>/
+
+tmp="$(mktemp -d)"
+trap 'git -C "$HERE" worktree remove --force "$tmp/src" 2>/dev/null; rm -rf "$tmp"' EXIT
+git -C "$HERE" worktree add --quiet --detach "$tmp/src" "$ref"
+ln -s "$HERE/web/node_modules" "$tmp/src/web/node_modules"
+
+echo "== building $ref ($(git -C "$HERE" rev-parse --short "$ref")) for /$repo/"
+(cd "$tmp/src/web" && npm run --silent engine && npx tsc --noEmit && npx vite build --base="/$repo/" --outDir "$tmp/site" --emptyOutDir --logLevel warn)
+touch "$tmp/site/.nojekyll"           # serve the files as they are, without Jekyll
+
+cd "$tmp/site"
+git init --quiet --initial-branch=gh-pages
+git add -A
+git commit --quiet -m "Deploy $ref $(git -C "$HERE" rev-parse --short "$ref")"
+git push --quiet --force "$url" gh-pages
+echo "== pushed to gh-pages: https://$(basename "$(dirname "$url")" | sed 's/.*://').github.io/$repo/"

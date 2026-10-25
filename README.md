@@ -7,6 +7,8 @@ Every law is checked for dimensional consistency. Every derivation step is
 re-checked, and each derived law records which axioms it rests on and which
 assumptions the CAS was allowed to use.
 
+Try it in the browser, nothing to install: https://domandlj.github.io/Landau/
+
 ```
 $ ./landau -v modules/projectile.lan
 ...
@@ -56,6 +58,9 @@ on the first `simulate`. The modules of `modules/` are built into the app, and
 modules you save or delete are kept in the browser's localStorage. `npm run
 build` needs the opam switch for the checker; `web/dist` can then be served by
 any static file server.
+`./deploy-pages` publishes it on GitHub Pages: it builds `main` (not the
+working tree) with the repository name as the base path and force-pushes the
+result as the only commit of the `gh-pages` branch.
 
 `npm run dev:server` checks with the native `landau` instead: the Vite server
 runs `landau --json -` for each check (see `web/vite.config.ts`), so it only
