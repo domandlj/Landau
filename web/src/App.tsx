@@ -203,7 +203,7 @@ export function App() {
     fetchModules()
       .then((ms) => {
         setModules(ms);
-        // `#maxwell` in the URL opens that module; a first visit starts from projectile
+        // `#maxwell` in the URL opens that module; a first visit starts from the tour, landau.lan
         const linked = ms.find((m) => m.name === decodeURIComponent(location.hash.slice(1)));
         const open = (m: Module) => {
           source.current = m.source;
@@ -212,7 +212,7 @@ export function App() {
         };
         if (linked) open(linked);
         else if (initial === null) {
-          const first = ms.find((m) => m.name === "projectile") ?? ms[0];
+          const first = ms.find((m) => m.name === "landau") ?? ms[0];
           if (first) open(first);
         } else {
           // the draft from last time: unsaved if it differs from its module

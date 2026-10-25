@@ -1,0 +1,6 @@
+theory A
+  dim L
+end
+
+text
+  never closed

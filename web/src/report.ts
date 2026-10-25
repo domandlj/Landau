@@ -27,6 +27,11 @@ interface Base {
   line: number;
 }
 
+/** text ... end: prose with $inline$ and $$display$$ math, as written */
+export interface TextItem extends Base {
+  kind: "text";
+  content: string;
+}
 export interface ImportItem extends Base {
   kind: "import";
   name: string;
@@ -167,7 +172,7 @@ export interface ErrorItem extends Base {
   theory: string | null;
 }
 
-export type Item = ImportItem | DimItem | UnitsItem | ConstItem | ComputeItem | GroupsItem | EigenItem | SimulateItem | DiagramItem | AliasItem | VarItem | DefItem | LawItem | DeriveItem | ErrorItem;
+export type Item = TextItem | ImportItem | DimItem | UnitsItem | ConstItem | ComputeItem | GroupsItem | EigenItem | SimulateItem | DiagramItem | AliasItem | VarItem | DefItem | LawItem | DeriveItem | ErrorItem;
 
 export interface Theory {
   name: string;

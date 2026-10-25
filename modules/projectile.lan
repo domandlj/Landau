@@ -11,6 +11,13 @@ theory Kinematics
   law position: r = r0 + v0*t + a*t^2/2
 end
 
+text
+  A body thrown at speed $v$ and angle $\theta$ moves in a parabola: gravity
+  only bends the vertical part of its motion. Where does it land?
+
+  ![$v = 20$ m/s and $\theta = 50^\circ$: it lands $R = 40.2$ m away after $3.1$ s](media/projectile.gif)
+end
+
 theory Projectile
   import Kinematics
   var v : L/T, positive            -- launch speed
@@ -25,5 +32,10 @@ theory Projectile
     tf := solve hy for t
     rr := subst tf into hx
     simplify rr                      -- R = v^2*sin(2*θ)/g
+  end
+
+  text
+    Since $\sin 2\theta$ is largest at $\theta = 45^\circ$, that angle throws
+    farthest, and $\theta$ and $90^\circ - \theta$ land at the same place.
   end
 end

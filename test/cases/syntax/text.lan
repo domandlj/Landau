@@ -1,0 +1,21 @@
+text
+  Notes before any theory, with $x = v t$ and $$E = m c^2$$
+end
+
+theory Notes
+  dim L, T
+  var x : L
+  var t : T
+  var text : L/T                   -- `text` followed by more is still a name
+    text
+      Indented blocks lose their common indentation.
+        Deeper lines keep the rest.
+      law, var, end and -- are just words in here; an end line with
+      something after it, like the next one, is text too:
+      end of the story
+    end
+  law speed: text = x/t
+  text
+    After the law.
+  end   -- a comment can follow the closing end
+end

@@ -15,10 +15,11 @@ test("every formula in the reference renders", () => {
 });
 
 // $...$ in help text is cut out by a regex; an odd number of $ would show raw
-// LaTeX and swallow the text around it.
+// LaTeX and swallow the text around it. `code` is cut out first, so a $ in
+// it does not count.
 test.each(HELP.map((s) => [s.id, s] as const))("section %s pairs its $ signs", (_, s) => {
   for (const text of [s.intro, ...(s.entries ?? []).map((e) => e.text)]) {
-    if (text) expect((text.match(/\$/g) ?? []).length % 2, text).toBe(0);
+    if (text) expect((text.replace(/`[^`]+`/g, "").match(/\$/g) ?? []).length % 2, text).toBe(0);
   }
 });
 

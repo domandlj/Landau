@@ -3,6 +3,101 @@ step (-v). Their output is the expected behavior: a change to a derived law,
 a dimension or a number shows up here. Each result was checked by hand or
 against an independent calculation when the feature was added.
 
+  $ landau -v ../modules/landau.lan
+    | ![Lev Landau at the blackboard. Photo: Scienza e Lode, University of Camerino.](https://scienzaelode.unicam.it/sites/webzine.unicam.it/files/Dau.jpg)
+    |
+    | **Landau** is a language for writing physics: you declare quantities with
+    | their dimensions, state laws, and *derive* new laws from them, step by step.
+    | Every equation is checked for dimensional consistency, and the algebra and
+    | calculus are done by SymPy.
+    |
+    | It is named after Lev Landau (1908–1968), Nobel Prize in Physics 1962,
+    | whose *Course of Theoretical Physics* with Evgeny Lifshitz builds all of
+    | physics this way: from a few laws, everything else by derivation.
+  theory Spring
+    import SI
+    var t : s   [T], positive
+    var x(t) : m   [L]
+    var m : kg   [M], positive
+    var k : N/m   [M/T^2], positive
+    var x0 : m   [L]
+    | **Laws and dimensions.** Newton's second law for a mass on a spring,
+    | $m \ddot x = -k x$. Each side has the dimension of a force, shown on the
+    | right. Write `m*diff(x, t) = -k*x` instead and Landau refuses it: a
+    | momentum is not a force.
+    law newton : m*diff(diff(x, t), t) = -k*x   [M*L/T^2]
+    | **Differential equations.** Solving the law with the starting conditions
+    | $x(0) = x_0$, $\dot x(0) = 0$ gives the oscillation. Open *steps* to see
+    | each one.
+    derive motion : x = x0*cos(t*sqrt(k)/sqrt(m))   [L]
+        from    Spring.newton
+        assumes m > 0, t > 0, k > 0
+        via     solve for x with initial conditions
+          x = x0*cos(t*sqrt(k)/sqrt(m))
+  
+  theory Incline
+    import SI
+    var m : kg   [M], positive
+    var g : m/s^2   [L/T^2], positive
+    var α, μ : 1, positive
+    var N : N   [M*L/T^2]
+    var a : m/s^2   [L/T^2]
+    | **Free-body diagrams.** List the forces on a body and Landau draws them
+    | and writes Newton's law, $m\vec a = \sum \vec F$. The marked angles are
+    | checked against the picture.
+    diagram sliding : vec(-m*a*cos(α), -m*a*sin(α)) = vec(-N*sin(α) + μ*N*cos(α), -m*g + N*cos(α) + μ*N*sin(α))   [2-vector M*L/T^2]
+        force W = m*g toward (0, -1)
+        force N = N toward (-0.479, 0.878)
+        force f = μ*N toward (0.878, 0.479)
+    derive acceleration : a = g*(-μ*cos(α) + sin(α))   [L/T^2]
+        from    Incline.sliding
+        assumes m > 0, α > 0, μ > 0, g > 0
+        via     component x, component y, solve for a, N
+          x := -m*a*cos(α) = -N*sin(α) + μ*N*cos(α)
+          y := -m*a*sin(α) = -m*g + N*cos(α) + μ*N*sin(α)
+          a = g*(-μ*cos(α) + sin(α))
+  
+  theory Relativity
+    import SI
+    var m : kg   [M], positive
+    var v, c : m/s   [L/T], positive
+    var E : J   [M*L^2/T^2]
+    | **Approximations.** Einstein's energy $E = \gamma m c^2$, expanded for
+    | $v \ll c$: the rest energy plus Newton's kinetic energy. Landau records
+    | the first term it left out.
+    law energy : E = m*c^2/sqrt(1 - v^2/c^2)   [M*L^2/T^2]
+    derive classical : E = m*c^2 + m*v^2/2   [M*L^2/T^2]
+        from    Relativity.energy
+        assumes v ≪ c (to order 2); left out: 3*m*v^4/(8*c^2)
+        via     approximate (v ≪ c, order 2)
+          E = m*c^2 + m*v^2/2
+  
+  theory Pendulum
+    dim M, L, T
+    var P : T
+    var ℓ : L
+    var g : L/T^2
+    var m : M
+    var θ0 : 1
+    | **Dimensional analysis.** From the dimensions alone, the period of a
+    | pendulum must be $\sqrt{\ell/g}$ times a function of the amplitude, and
+    | it cannot depend on the mass. (Buckingham's $\Pi$ theorem.)
+    groups period : P from ℓ, g, m, θ0
+        Π1 = θ0
+        Π2 = g*P^2/ℓ
+        P = sqrt(ℓ/g)*Φ(θ0)
+        m cannot appear: no product of the others has its dimension [M]
+  
+  theory Numbers
+    import Constants
+    | **Numbers with units.** The speed needed to escape the Earth, from
+    | $v = \sqrt{2GM/R}$ with the Earth's mass and radius.
+    compute sqrt(2*G*(5.972e24 [kg])/(6371 [km])) = 11.2 [km/s]   [L/T]
+  
+    | There is more in the **Modules** menu: vectors and Maxwell's equations,
+    | integrals over curves and surfaces, matrices and normal modes, series, and
+    | numerical simulation. The **?** button has the whole language.
+
   $ landau -v ../modules/projectile.lan
   theory Kinematics
     dim L, T
@@ -12,6 +107,10 @@ against an independent calculation when the feature was added.
     var t : T, positive
     law position : r = r0 + v0*t + a*t^2/2   [2-vector L]
   
+    | A body thrown at speed $v$ and angle $\theta$ moves in a parabola: gravity
+    | only bends the vertical part of its motion. Where does it land?
+    |
+    | ![$v = 20$ m/s and $\theta = 50^\circ$: it lands $R = 40.2$ m away after $3.1$ s](media/projectile.gif)
   theory Projectile
     import Kinematics
     var v : L/T, positive
@@ -28,6 +127,8 @@ against an independent calculation when the feature was added.
           tf := t = 2*v*sin(θ)/g
           rr := R = v*cos(θ)*(2*v*sin(θ)/g)
           R = v^2*sin(2*θ)/g
+    | Since $\sin 2\theta$ is largest at $\theta = 45^\circ$, that angle throws
+    | farthest, and $\theta$ and $90^\circ - \theta$ land at the same place.
   
 
   $ landau -v ../modules/energy.lan
@@ -55,6 +156,11 @@ against an independent calculation when the feature was added.
   
 
   $ landau -v ../modules/motion.lan
+    | **Motion in one dimension.** A body is thrown straight up with speed $v_0$
+    | from height $x_0$, and gravity pulls it down with constant acceleration $g$.
+    | Velocity and acceleration are derivatives of the position:
+    |
+    | $$v = \frac{dx}{dt}, \qquad a = \frac{dv}{dt}$$
   theory Motion
     dim L, T
     var t : T
@@ -67,6 +173,8 @@ against an independent calculation when the feature was added.
     law position : x = x0 + v0*t - g*t^2/2   [L]
     law velocity : v = diff(x, t)   [L/T]
     law accel : a = diff(v, t)   [L/T^2]
+    | Putting the position into the definition of $v$ gives the speed, which
+    | falls linearly with time; one more derivative leaves only gravity.
     derive speed : v = v0 - t*g   [L/T]
         from    Motion.position, Motion.velocity
         assumes g > 0
@@ -79,6 +187,8 @@ against an independent calculation when the feature was added.
         via     subst, simplify
           s := a = diff(v0 - t*g, t)
           a = -g
+    | At the top the body stops for an instant, $v = 0$, which happens at
+    | $t = v_0/g$: a faster throw rises for longer, *stronger* gravity for less.
     derive highest : t = v0/g   [T]
         from    Motion.position, Motion.velocity
         assumes g > 0
@@ -505,6 +615,82 @@ against an independent calculation when the feature was added.
           w2 := W = line(vec(-κ*r.x, -κ*r.y, -κ*r.z), vec(a*cos(pi*s/2), b*sin(pi*s/2), 0), s, 0, 1)
           W = κ*(a^2 - b^2)/2
   
+
+  $ landau -v ../modules/constant_force.lan
+    | **The work of a constant force.** The work done by a force $\vec F$ along a
+    | path is the line integral
+    | $$W = \int \vec F \cdot \mathrm{d}\vec r = \int_a^b \vec F(\vec p(s)) \cdot \frac{\mathrm{d}\vec p}{\mathrm{d}s}\,\mathrm{d}s.$$
+    | When $\vec F$ is constant it comes out of the integral, and what is left
+    | integrates to the displacement:
+    | $$W = \vec F \cdot \int_a^b \frac{\mathrm{d}\vec p}{\mathrm{d}s}\,\mathrm{d}s = \vec F \cdot \big(\vec p(b) - \vec p(a)\big) = \vec F \cdot \Delta\vec r.$$
+    | So the work depends only on where the path starts and ends, not on the
+    | shape between.
+  theory ConstantForce
+    dim M, L, T
+    dim Force = M*L/T^2
+    var r : L, position
+    var s, a, b : 1
+    var x(s), y(s), z(s) : L
+    var p(s) : L, vector
+    var F : M*L/T^2, vector
+    var Fx, Fy, Fz : M*L/T^2
+    var W : M*L^2/T^2
+    law work : W = line(F, p, s, a, b)   [M*L^2/T^2]
+    law constant : F = vec(Fx, Fy, Fz)   [3-vector M*L/T^2]
+    law path : p = vec(x, y, z)   [3-vector L]
+    | **The proof.** Nothing is assumed about the path: $x(s)$, $y(s)$, $z(s)$
+    | are arbitrary functions. The claim is written as a difference that must
+    | vanish,
+    | $$\int_a^b \vec F \cdot \mathrm{d}\vec r - \vec F \cdot \big(\vec p(b) - \vec p(a)\big) = 0.$$
+    | Landau puts in the force and the path, writes the dot products in
+    | components, and SymPy does the integrals, by the fundamental theorem of
+    | calculus: $\int_a^b x'(s)\,\mathrm{d}s = x(b) - x(a)$.
+    law claim : line(F, p, s, a, b) - dot(F, at(p, s, b) - at(p, s, a)) = 0   [M*L^2/T^2]
+    derive holds : 0 = 0   [any]   (holds identically)
+        from    ConstantForce.path, ConstantForce.constant, ConstantForce.claim
+        via     subst, subst, expand, simplify
+          c1 := line(vec(Fx, Fy, Fz), p, s, a, b) - dot(vec(Fx, Fy, Fz), at(p, s, b) - at(p, s, a)) = 0
+          c2 := line(vec(Fx, Fy, Fz), vec(x, y, z), s, a, b) - dot(vec(Fx, Fy, Fz), at(vec(x, y, z), s, b) - at(vec(x, y, z), s, a)) = 0
+          e := integral(Fx*diff(x, s) + Fy*diff(y, s) + Fz*diff(z, s), s, a, b) - (Fx*(at(x, s, b) - at(x, s, a)) + Fy*(at(y, s, b) - at(y, s, a)) + Fz*(at(z, s, b) - at(z, s, a))) = 0
+          0 = 0
+    | The work itself, in components: $W = F_x\,\Delta x + F_y\,\Delta y + F_z\,\Delta z$.
+    derive result : W = Fx*x(b) + Fy*y(b) + Fz*z(b) - Fx*x(a) - Fy*y(a) - Fz*z(a)   [M*L^2/T^2]
+        from    ConstantForce.path, ConstantForce.constant, ConstantForce.work
+        via     subst, subst, simplify
+          w1 := W = line(vec(Fx, Fy, Fz), p, s, a, b)
+          w2 := W = line(vec(Fx, Fy, Fz), vec(x, y, z), s, a, b)
+          W = Fx*x(b) + Fy*y(b) + Fz*z(b) - Fx*x(a) - Fy*y(a) - Fz*z(a)
+  
+    | **An example.** Lift a mass $m$ from the origin to the point $(R, 0, h)$
+    | two ways: up a straight ramp, and along a curve that rises steeply and then
+    | levels off. Gravity is the same constant force, $\vec F = -m g\,\hat z$,
+    | on both.
+  theory TwoPaths
+    dim M, L, T
+    var r : L, position
+    var s : 1
+    var m : M, positive
+    var g : L/T^2, positive
+    var R, h : L, positive
+    var W1, W2 : M*L^2/T^2
+    law ramp : W1 = line(vec(0, 0, -m*g), vec(R*s, 0, h*s), s, 0, 1)   [M*L^2/T^2]
+    law curve : W2 = line(vec(0, 0, -m*g), vec(R*s, 0, h*sin(pi*s/2)), s, 0, 1)   [M*L^2/T^2]
+    derive up_ramp : W1 = -m*g*h   [M*L^2/T^2]
+        from    TwoPaths.ramp
+        assumes m > 0, g > 0, h > 0
+        via     simplify
+          W1 = -m*g*h
+    derive up_curve : W2 = -m*g*h   [M*L^2/T^2]
+        from    TwoPaths.curve
+        assumes m > 0, g > 0, h > 0
+        via     simplify
+          W2 = -m*g*h
+  
+    | Both are $-mgh$, which is $\vec F \cdot \Delta\vec r$ with
+    | $\Delta\vec r = (R, 0, h)$: only the height gained counts. A force that
+    | changes from place to place does not obey this in general. When it does,
+    | the force is called conservative, like the spring in `SpringField` in the
+    | **work** module.
 
   $ landau -v ../modules/integrals.lan
   theory Shapes

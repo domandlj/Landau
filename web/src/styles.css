@@ -226,6 +226,24 @@ button, select { font: inherit; color: inherit; }
 .vars tr { cursor: pointer; }
 .vars tr:hover td { background: var(--active-line); }
 
+/* ---- text blocks ---- */
+
+.prose { margin: 4px 2px 14px; line-height: 1.6; cursor: default; }
+.prose p { margin: 0 0 8px; }
+.prose p:last-child { margin-bottom: 0; }
+.prose .tex-display { margin: 6px 0; }
+.figure { margin: 10px 0 12px; }
+.figure img, .figure video { display: block; max-width: 100%; max-height: 420px; border-radius: 8px; }
+.figure iframe { display: block; width: 100%; max-width: 640px; aspect-ratio: 16 / 9; border: 0; border-radius: 8px; }
+.figure figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+.figure-missing {
+  padding: 10px 12px;
+  border: 1px dashed var(--error);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--error);
+}
+
 /* ---- cards ---- */
 
 .card {

@@ -1,6 +1,14 @@
 -- Calculus: velocity and acceleration as derivatives, and identities of
 -- vector calculus checked by expanding them in components.
 
+text
+  **Motion in one dimension.** A body is thrown straight up with speed $v_0$
+  from height $x_0$, and gravity pulls it down with constant acceleration $g$.
+  Velocity and acceleration are derivatives of the position:
+
+  $$v = \frac{dx}{dt}, \qquad a = \frac{dv}{dt}$$
+end
+
 theory Motion
   dim L, T
   var t : T
@@ -15,6 +23,11 @@ theory Motion
   law velocity: v = diff(x, t)
   law accel:    a = diff(v, t)
 
+  text
+    Putting the position into the definition of $v$ gives the speed, which
+    falls linearly with time; one more derivative leaves only gravity.
+  end
+
   derive speed:                    -- v = v0 - g*t
     s := subst position into velocity
     simplify s
@@ -23,6 +36,11 @@ theory Motion
   derive gravity:                  -- a = -g
     s := subst speed into accel
     simplify s
+  end
+
+  text
+    At the top the body stops for an instant, $v = 0$, which happens at
+    $t = v_0/g$: a faster throw rises for longer, *stronger* gravity for less.
   end
 
   derive highest:                  -- the top is where v = 0

@@ -1,0 +1,128 @@
+-- A tour of Landau: the first file the app opens. Each theory below shows
+-- one thing the language does; the notes say what to look at.
+
+text
+  ![Lev Landau at the blackboard. Photo: Scienza e Lode, University of Camerino.](https://scienzaelode.unicam.it/sites/webzine.unicam.it/files/Dau.jpg)
+
+  **Landau** is a language for writing physics: you declare quantities with
+  their dimensions, state laws, and *derive* new laws from them, step by step.
+  Every equation is checked for dimensional consistency, and the algebra and
+  calculus are done by SymPy.
+
+  It is named after Lev Landau (1908–1968), Nobel Prize in Physics 1962,
+  whose *Course of Theoretical Physics* with Evgeny Lifshitz builds all of
+  physics this way: from a few laws, everything else by derivation.
+end
+
+theory Spring
+  import SI
+  var t : s, positive
+  var x(t) : m                     -- x depends on t
+  var m : kg, positive
+  var k : N/m, positive            -- the spring constant
+  var x0 : m
+
+  text
+    **Laws and dimensions.** Newton's second law for a mass on a spring,
+    $m \ddot x = -k x$. Each side has the dimension of a force, shown on the
+    right. Write `m*diff(x, t) = -k*x` instead and Landau refuses it: a
+    momentum is not a force.
+  end
+
+  law newton: m*diff(diff(x, t), t) = -k*x
+
+  text
+    **Differential equations.** Solving the law with the starting conditions
+    $x(0) = x_0$, $\dot x(0) = 0$ gives the oscillation. Open *steps* to see
+    each one.
+  end
+
+  derive motion:                   -- x = x0*cos(sqrt(k/m)*t)
+    solve newton for x with x(0) = x0, at(diff(x, t), t, 0) = 0
+  end
+end
+
+theory Incline
+  import SI
+  var m : kg, positive
+  var g : m/s^2, positive
+  var α, μ : 1, positive           -- the slope; the friction coefficient
+  var N : N
+  var a : m/s^2
+
+  text
+    **Free-body diagrams.** List the forces on a body and Landau draws them
+    and writes Newton's law, $m\vec a = \sum \vec F$. The marked angles are
+    checked against the picture.
+  end
+
+  diagram sliding:                 -- a block sliding down, slowed by friction
+    body m
+    force W = m*g toward down
+    force N toward angle(α + pi/2)
+    force f = μ*N toward angle(α)
+    accelerates a toward angle(α + pi)
+    plane angle(α)
+    draw α = 0.5
+    mark α between plane and right
+  end
+
+  derive acceleration:             -- a = g*(sin α - μ cos α)
+    x := component x of sliding
+    y := component y of sliding
+    solve x, y for a, N
+  end
+end
+
+theory Relativity
+  import SI
+  var m : kg, positive
+  var v, c : m/s, positive
+  var E : J
+
+  text
+    **Approximations.** Einstein's energy $E = \gamma m c^2$, expanded for
+    $v \ll c$: the rest energy plus Newton's kinetic energy. Landau records
+    the first term it left out.
+  end
+
+  law energy: E = m*c^2/sqrt(1 - v^2/c^2)
+
+  derive classical:                -- E = m*c^2 + m*v^2/2
+    approximate energy where v << c order 2
+  end
+end
+
+theory Pendulum
+  dim M, L, T
+  var P : T                        -- the period
+  var ℓ : L                        -- the length
+  var g : L/T^2
+  var m : M                        -- the mass
+  var θ0 : 1                       -- the amplitude
+
+  text
+    **Dimensional analysis.** From the dimensions alone, the period of a
+    pendulum must be $\sqrt{\ell/g}$ times a function of the amplitude, and
+    it cannot depend on the mass. (Buckingham's $\Pi$ theorem.)
+  end
+
+  groups period: P from ℓ, g, m, θ0
+end
+
+theory Numbers
+  import Constants                 -- G, c, h, ... with their SI units
+
+  text
+    **Numbers with units.** The speed needed to escape the Earth, from
+    $v = \sqrt{2GM/R}$ with the Earth's mass and radius.
+  end
+
+  compute sqrt(2*G*(5.972e24 [kg])/(6371 [km])) in km/s digits 3
+end
+
+text
+  There is more in the **Modules** menu: vectors and Maxwell's equations,
+  integrals over curves and surfaces, matrices and normal modes, series, and
+  numerical simulation. The **?** button has the whole language.
+end

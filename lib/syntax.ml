@@ -98,6 +98,7 @@ type decl_desc =
   | Def of string * (string * dexpr option) list * expr
   | Law of string * eq
   | Derive of string * step list
+  | Text of string (* text ... end: prose with $math$, shown as written *)
 
 type decl = { desc : decl_desc; line : int }
 type item = Theory of string * decl list | Top of decl

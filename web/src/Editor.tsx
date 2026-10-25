@@ -25,9 +25,19 @@ const BUILTINS = new Set([
 ]);
 
 // Mirrors lib/lexer.mll. Identifiers may contain any non-ASCII letter (θ, ψ, ħ).
-const landau = StreamLanguage.define<{ afterDecl: boolean }>({
-  startState: () => ({ afterDecl: false }),
+const landau = StreamLanguage.define<{ afterDecl: boolean; inText: boolean }>({
+  startState: () => ({ afterDecl: false, inText: false }),
   token(stream, state) {
+    // text ... end: prose with $math$, up to a line holding only `end`
+    if (state.inText) {
+      if (stream.sol() && stream.match(/^\s*end(?=\s*(--.*)?$)/)) {
+        state.inText = false;
+        return "keyword";
+      }
+      if (stream.match(/^\$\$.*?\$\$/) || stream.match(/^\$[^$]*\$/)) return "string";
+      if (!stream.match(/^[^$]+/)) stream.next();
+      return "content";
+    }
     if (stream.eatSpace()) return null;
     if (stream.match("--") || stream.match("#")) {
       stream.skipToEnd();
@@ -36,6 +46,10 @@ const landau = StreamLanguage.define<{ afterDecl: boolean }>({
     if (stream.match(/^\d+(\.\d+)?/)) return "number";
     if (stream.match(/^[A-Za-z_\u0080-￿][\w'\u0080-￿]*/)) {
       const word = stream.current();
+      if (word === "text" && stream.match(/^\s*$/, false)) {
+        state.inText = true;
+        return "keyword";
+      }
       const wasDecl = state.afterDecl;
       state.afterDecl = ["theory", "law", "derive", "def"].includes(word);
       if (KEYWORDS.has(word)) return "keyword";
@@ -60,6 +74,8 @@ const highlight = HighlightStyle.define([
   { tag: tags.modifier, color: "var(--syn-attr)" },
   { tag: tags.standard(tags.variableName), color: "var(--syn-builtin)" },
   { tag: tags.operator, color: "var(--syn-op)" },
+  { tag: tags.content, color: "var(--muted)" },
+  { tag: tags.string, color: "var(--syn-attr)" },
 ]);
 
 const theme = EditorView.theme({

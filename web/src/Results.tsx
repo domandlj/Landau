@@ -2,6 +2,7 @@ import { useContext, useMemo, useState, type ReactNode } from "react";
 import katex from "katex";
 import { DERIV_MACROS, DerivStyleContext, useDimTex } from "./dimStyle";
 import { FreeBody } from "./FreeBody";
+import { media } from "./media";
 import { SimPlot } from "./SimPlot";
 import type {
   ComputeItem,
@@ -17,6 +18,7 @@ import type {
   LawItem,
   Report,
   Shape,
+  TextItem,
   Theory,
   VarItem,
 } from "./report";
@@ -324,8 +326,78 @@ function Quantities({ items, goTo }: { items: Item[]; goTo: GoTo }) {
   );
 }
 
+// text ... end, as prose: blank lines separate paragraphs; $$display$$ and
+// $inline$ math (\$ is a dollar sign), **bold** and *italic*; a line
+// ![caption](src) is a picture, a video or a YouTube/Vimeo player
+const PROSE = /(\$\$[\s\S]+?\$\$|\\\$|\$[^$]+?\$|\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/;
+const FIGURE = /^\s*!\[([^\]]*)\]\(\s*([^)\s]+)\s*\)\s*$/;
+
+function inline(text: string): ReactNode[] {
+  return text.split(PROSE).map((p, i) => {
+    if (p.startsWith("$$") && p.length > 4) return <Tex key={i} latex={p.slice(2, -2)} display />;
+    if (p === "\\$") return "$";
+    if (p.startsWith("$") && p.length > 2) return <Tex key={i} latex={p.slice(1, -1)} />;
+    if (p.startsWith("**") && p.length > 4) return <strong key={i}>{p.slice(2, -2)}</strong>;
+    if (p.startsWith("*") && p.length > 2) return <em key={i}>{p.slice(1, -1)}</em>;
+    return p;
+  });
+}
+
+function Figure({ caption, src }: { caption: string; src: string }) {
+  const m = media(src);
+  const alt = caption.replace(/\$/g, "");
+  return (
+    <figure className="figure">
+      {m.kind === "image" && <img src={m.url} alt={alt} loading="lazy" />}
+      {m.kind === "video" && <video src={m.url} controls loop muted playsInline preload="metadata" aria-label={alt} />}
+      {m.kind === "embed" && (
+        <iframe src={m.url} title={alt || "video"} loading="lazy" allow="fullscreen; picture-in-picture" allowFullScreen />
+      )}
+      {m.kind === "missing" && (
+        <div className="figure-missing">
+          <code>{m.src}</code> is not in <code>modules/</code>: put the file in <code>modules/media/</code>, or give a web address
+        </div>
+      )}
+      {caption && <figcaption>{inline(caption)}</figcaption>}
+    </figure>
+  );
+}
+
+// A paragraph's lines: runs of text, and figures on lines of their own.
+function paragraph(text: string, key: number): ReactNode[] {
+  const out: ReactNode[] = [];
+  let run: string[] = [];
+  const flush = () => {
+    if (run.length) out.push(<p key={`${key}.${out.length}`}>{inline(run.join("\n"))}</p>);
+    run = [];
+  };
+  for (const line of text.split("\n")) {
+    const f = line.match(FIGURE);
+    if (!f) {
+      run.push(line);
+      continue;
+    }
+    flush();
+    out.push(<Figure key={`${key}.${out.length}`} caption={f[1]} src={f[2]} />);
+  }
+  flush();
+  return out;
+}
+
+function Prose({ item, goTo }: { item: TextItem; goTo: GoTo }) {
+  if (item.content.trim() === "") return null;
+  return (
+    <div className="prose" title={`line ${item.line}: double-click to edit`} onDoubleClick={() => goTo(item.line)}>
+      {item.content.split(/\n\s*\n/).flatMap(paragraph)}
+    </div>
+  );
+}
+
 function TheoryView({ theory, goTo }: { theory: Theory; goTo: GoTo }) {
   const errors = theory.items.filter((i) => i.kind === "error").length;
+  // text before any theory is a preface, not a theory called Main
+  const preface = theory.name === "Main" && theory.items.every((i) => i.kind === "text");
+  if (preface) return <section className="theory">{theory.items.map((item, k) => item.kind === "text" && <Prose key={k} item={item} goTo={goTo} />)}</section>;
   return (
     <section className="theory">
       <h2>
@@ -335,6 +407,7 @@ function TheoryView({ theory, goTo }: { theory: Theory; goTo: GoTo }) {
       <Quantities items={theory.items} goTo={goTo} />
       {theory.items.map((item, k) => {
         switch (item.kind) {
+          case "text": return <Prose key={k} item={item} goTo={goTo} />;
           case "law": return <Law key={k} item={item} goTo={goTo} />;
           case "def": return <Def key={k} item={item} goTo={goTo} />;
           case "derive": return <Derive key={k} item={item} goTo={goTo} />;
@@ -351,6 +424,24 @@ function TheoryView({ theory, goTo }: { theory: Theory; goTo: GoTo }) {
   );
 }
 
+// Main holds everything written outside a theory, wherever it is; cut it into
+// the runs between the other theories, so each run shows where it was written.
+function inSourceOrder(theories: Theory[]): Theory[] {
+  const first = (t: Theory) => (t.items.length ? Math.min(...t.items.map((i) => i.line)) : Infinity);
+  const others = theories.filter((t) => t.name !== "Main");
+  const main = theories.find((t) => t.name === "Main");
+  if (!main) return theories;
+  const starts = others.map(first);
+  const runs: Theory[] = [];
+  for (const item of main.items) {
+    const last = runs[runs.length - 1];
+    const prev = last?.items[last.items.length - 1];
+    if (prev && !starts.some((l) => prev.line < l && l < item.line)) last.items.push(item);
+    else runs.push({ ...main, items: [item] });
+  }
+  return [...others, ...runs].sort((a, b) => first(a) - first(b));
+}
+
 export function Results({ report, goTo }: { report: Report; goTo: GoTo }) {
   // Errors outside any theory: syntax errors stop everything else.
   const loose = report.errors.filter((e) => e.theory === null);
@@ -363,7 +454,7 @@ export function Results({ report, goTo }: { report: Report; goTo: GoTo }) {
         </article>
       )}
       {loose.map((e, k) => <ErrorCard key={k} item={e} goTo={goTo} />)}
-      {report.theories.map((t) => <TheoryView key={t.name} theory={t} goTo={goTo} />)}
+      {inSourceOrder(report.theories).map((t, i) => <TheoryView key={`${t.name}.${i}`} theory={t} goTo={goTo} />)}
       {!report.fatal && !loose.length && !report.theories.length && (
         <p className="empty">Nothing to show yet. Declare a theory, or open a module.</p>
       )}

@@ -43,7 +43,8 @@ async function start(): Promise<{ py: Pyodide; landau: Landau }> {
   const answer = py.pyimport("worker").answer;
 
   post({ status: "loading the checker" });
-  const code = await (await fetch(`${import.meta.env.BASE_URL}engine/landau.bc.js`)).text();
+  // its name does not change when it is rebuilt, so ask the server each time
+  const code = await (await fetch(`${import.meta.env.BASE_URL}engine/landau.bc.js`, { cache: "no-cache" })).text();
   (0, eval)(code); // a classic script that sets globalThis.landau
   const landau = (globalThis as unknown as { landau: Landau }).landau;
   landau.setCas((line) => {

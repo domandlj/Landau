@@ -3,6 +3,7 @@ open Syntax
 %}
 
 %token <string> ID
+%token <string> TEXT
 %token <Q.t> NUM
 %token THEORY END IMPORT DIM VAR DEF LAW DERIVE SOLVE FOR SUBST INTO SIMPLIFY UNFOLD ROOT
 %token COMPONENT OF EXPAND DIFFERENTIATE BY APPLY TO INTEGRATE FROM WITH UNIT
@@ -59,6 +60,7 @@ decl_desc:
     { Def (n, ps, body) }
   | LAW n = ID COLON l = expr EQ r = expr { Law (n, { lhs = l; rhs = r }) }
   | DERIVE n = ID COLON steps = list(step) END { Derive (n, steps) }
+  | t = TEXT { Text t }
 
 (* dim Time (T): T is how Time is shown *)
 dimname:

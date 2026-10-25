@@ -67,6 +67,16 @@ end
         text: "One theory of a module; needed when several modules have a theory of that name. Modules can import each other, but not in a circle.",
       },
       { syntax: "-- comment", text: "Comments run to the end of the line (`#` works too)." },
+      {
+        syntax: "text ... end",
+        text: "Notes shown in the results where they are written, to explain what a theory does. `text` stands alone on its line and the block runs to a line holding only `end`; inside, nothing is Landau. Write `$inline$` and `$$display$$` math in LaTeX, `**bold**` and `*italic*`; a blank line starts a paragraph, and `\\$` is a dollar sign. Double-click a note in the results to jump to it.",
+        example: "text\n  The speed falls linearly, $v = v_0 - g t$, until the top:\n\n  $$t_\\text{top} = \\frac{v_0}{g}$$\nend",
+      },
+      {
+        syntax: "![caption](media/file.gif)",
+        text: "On a line of its own in a `text` block: a picture (PNG, JPG, GIF, SVG, WebP), a video (MP4, WebM), or a YouTube or Vimeo player for a link to one. The file is a web address or a path into `modules/`; files in `modules/media/` are built into the app. The caption may have math.",
+        example: "text\n  ![A throw at $\\theta = 50^\\circ$](media/projectile.gif)\nend",
+      },
     ],
   },
   {

@@ -60,7 +60,7 @@ any static file server.
 `npm run dev:server` checks with the native `landau` instead: the Vite server
 runs `landau --json -` for each check (see `web/vite.config.ts`), so it only
 listens on localhost, and saving writes `modules/*.lan`.
-`#name` in the URL opens that module.
+`#name` in the URL opens that module; a first visit opens the tour, `#landau`.
 
 `wasm/smoke.mjs` checks every module with the browser engine in Node and
 compares each report with the native one; `wasm/bench` times SymPy natively
@@ -123,6 +123,10 @@ def f(d : L, t) = d/t        -- parameters can be annotated
 
 law position: x = x0 + v0*t + a*t^2/2
 
+text                         -- notes, shown with the results where they are
+  The position is a parabola, $x(t) = x_0 + v_0 t + \frac{a t^2}{2}$.
+end
+
 derive range:                -- a new law, built from existing ones
   hx := position[x0 := 0, x := R]   -- instantiate: substitute variables
   tf := solve hy for t              -- SymPy solve (use `, root k` if several)
@@ -141,6 +145,19 @@ derive range:                -- a new law, built from existing ones
   l  := limit e as t -> inf         -- limit of both sides
 end                          -- the last step is the derived law
 ```
+
+Notes: a `text` block holds prose that the results show where it is written,
+to explain a theory step by step. `text` stands alone on its line, and the
+block runs to a line holding only `end` (a comment may follow); inside it
+nothing is Landau, so keywords and `--` are plain words. The block loses its
+common indentation. In the web app it is rendered: `$inline$` and
+`$$display$$` math in LaTeX, `**bold**`, `*italic*`, blank lines between
+paragraphs, `\$` for a dollar sign. Double-click a note to jump to it.
+A line `![caption](src)` shows a picture (PNG, JPG, GIF, SVG, WebP), a video
+(MP4, WebM, looping, with controls), or a player for a YouTube or Vimeo link.
+`src` is a web address or a path into `modules/`, like `media/projectile.gif`:
+the pictures and videos in `modules/media/` are built into the app.
+`modules/projectile.lan` shows one, drawn by `modules/media/projectile.py`.
 
 Expressions: `+ - * / ^`, numbers (`9.81` is exact), `pi`, `im` (imaginary
 unit) and the functions `sin cos tan asin acos atan atan2 sinh cosh tanh exp
@@ -405,6 +422,7 @@ warns first if other modules import it.
 
 The modules that come with Landau:
 
+- `modules/landau.lan`: a tour of the language, with a photo of Lev Landau at the blackboard (linked, not copied); the web app opens it on a first visit
 - `modules/projectile.lan`: projectile range from one 2D vector law, by components
 - `modules/energy.lan`: free fall from energy conservation, with definitions
 - `modules/quantum.lan`: rational exponents (ψ : L^(-3/2)), complex values; a plane wave gives the dispersion relation

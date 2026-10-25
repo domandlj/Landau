@@ -469,6 +469,7 @@ let rec component th k e =
       Sub (Call ("diff", [ c j f; comp r i ]), Call ("diff", [ c i f; comp r j ]))
   | Call ("lap", [ f ]) -> Call ("lap", [ c k f ])
   | Call ("diff", [ f; x ]) -> Call ("diff", [ c k f; x ])
+  | Call ("at", [ f; x; a ]) -> Call ("at", [ c k f; x; a ])
   | _ -> comp e k
 
 let size th e = match shape th e with Shape.V n -> n | _ -> 0
@@ -1406,6 +1407,7 @@ type shown =
   | SDef of string * string list * expr * Infer.scheme * Shape.table option (* shapes, shown when vectors are in scope *)
   | SLaw of string * eq * (Dim.t * Shape.t)
   | SDerive of string * value * (Dim.t * Shape.t) * (step * value) list
+  | SText of string
 
 (* ---- modules ---- *)
 
@@ -1517,6 +1519,7 @@ let rec process theories th d =
           th.dims <- add_entry "dimension" same_dim th.dims n { origin; v = Dim.base n })
         ns;
       SDim ns
+  | Text t -> SText t
   | Simulate sim -> SSimulate (simulate theories th sim)
   | Groups (name, target, xs) -> SGroups (groups th name target xs)
   | Eigen (name, a, b) -> SEigen (eigen th name a b)
@@ -1999,6 +2002,8 @@ let factor_latex f =
 
 let text_lines verbose = function
   | SImport n -> [ sprintf "  import %s" n ]
+  | SText "" -> []
+  | SText t -> List.map (fun l -> if l = "" then "  |" else "  | " ^ l) (String.split_on_char '\n' t)
   | SDim ns ->
       [ sprintf "  dim %s"
           (String.concat ", " (List.map (fun (n, sym) -> match sym with Some s -> sprintf "%s (%s)" n s | None -> n) ns)) ]
@@ -2130,6 +2135,7 @@ let shown_json th line sh : Yojson.Safe.t =
   let item kind fields = `Assoc ([ ("kind", jstr kind); ("line", `Int line) ] @ fields) in
   match sh with
   | SImport n -> item "import" [ ("name", jstr n) ]
+  | SText t -> item "text" [ ("content", jstr t) ]
   | SDim ns ->
       item "dim"
         [ ("names", jlist (fun (n, _) -> jstr n) ns);
